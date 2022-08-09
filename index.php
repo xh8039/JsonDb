@@ -20,3 +20,4 @@ print_r($DB->find('b', '测试4'));
 
 // 查询多条数据
 print_r($DB->select('b', '测试4'));
+?>
