@@ -11,33 +11,60 @@ class JsonDB
 {
 	//定义数据库文件名称
 	public $data_path;
-	private $path;
+	private $options;
 
 	//构造函数，初始化的时候最先执行
-	public function __construct($data_path, $path = '')
+	public function __construct($data_path, $options = [])
 	{
-		if (isset($path)) {
-			$path .= '/';
+		$options['path'] = $options['path'] ? $options['path'] : '';
+		if (!$options['data_type']) {
+			$options['data_type'] = true;
 		}
-		$this->data_folder = $_SERVER['DOCUMENT_ROOT'] . '/' . $path . 'JsonData'; //存储的目录
-		$this->data_path = "$this->data_folder/$data_path.json";
+		if ($options['data_type'] == 0) {
+			$options['data_type'] = false;
+		}
+		// $options['data_type'] = $options['data_type'] == null ? $options['data_type'];
+		$options['data_type'] = $options['data_type'] ? true : false;
+		if (isset($options['path'])) {
+			$options['path'] .= '/';
+		}
+		$this->options = $options;
+		$this->data_folder = $_SERVER['DOCUMENT_ROOT'] . '/' . $options['path'] . 'JsonData'; //存储的目录
+		$this->data_path = "$this->data_folder/$data_path" . ($options['data_type'] ? '' : '.json');
 	}
+
 	/**
-	 * 添加数据 初始化时建议采用
+	 * 添加单条数据
 	 * @param $array 要添加的数组
 	 */
 	public function insert(array $array)
 	{
 		if (file_exists($this->data_path)) {
 			$data = $this->json_file();
-			$data[] = $array;
-			return $this->array_file($data);
 		} else {
-			mkdir($this->data_folder, 0755, true);
+			@mkdir($this->data_folder, 0755, true);
 			$data = [];
-			$data[] = $array;
-			return $this->array_file($data);
 		}
+		$data[] = $array;
+		return $this->array_file($data);
+	}
+
+	/**
+	 * 添加多条数据
+	 * @param $array 要添加的数组
+	 */
+	public function insertAll(array $array)
+	{
+		if (file_exists($this->data_path)) {
+			$data = $this->json_file();
+		} else {
+			@mkdir($this->data_folder, 0755, true);
+			$data = [];
+		}
+		foreach ($array as $value) {
+			$data[] = $value;
+		}
+		return $this->array_file($data);
 	}
 
 	/**
@@ -129,17 +156,18 @@ class JsonDB
 		}
 		return $data;
 	}
-	
+
 	public function json_encode($array)
 	{
-		return json_encode($array, 128 | 256);
+		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
 	}
 	public function json_file()
 	{
 		if (!file_exists($this->data_path)) {
 			return false;
 		}
-		$data = json_decode(file_get_contents($this->data_path), true);
+		$data = file_get_contents($this->data_path);
+		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
 		if (is_array($data)) {
 			return $data;
 		} else {
@@ -151,11 +179,11 @@ class JsonDB
 		if (!is_array($array)) {
 			$this->DbError('传入参数非数组！');
 		}
-		return file_put_contents($this->data_path, $this->json_encode($array));
+		$data = $this->json_encode($array);
+		return file_put_contents($this->data_path, ($this->options['data_type'] ? gzcompress($data) : $data));
 	}
 	private function DbError($msg)
 	{
 		exit('JsonDB error：' . $msg);
 	}
 }
-?>
