@@ -11,12 +11,16 @@ class JsonDB
 {
 	//定义数据库文件名称
 	private $data_path;
+	private $path;
 
 	//构造函数，初始化的时候最先执行
-	public function __construct($data_path)
+	public function __construct($data_path, $path = '')
 	{
-		$this->data_folder = 'JsonData';
-		$this->data_path = "./$this->data_folder/$data_path.json";
+		if (isset($path)) {
+			$path .= '/';
+		}
+		$this->data_folder = $_SERVER['DOCUMENT_ROOT'] . '/' . $path . 'JsonData'; //存储的目录
+		$this->data_path = "$this->data_folder/$data_path.json";
 	}
 	/**
 	 * 添加数据 初始化时建议采用
@@ -90,12 +94,15 @@ class JsonDB
 	public function find($k, $val)
 	{
 		$file = $this->json_file();
+		if (!$file) {
+			return false;
+		}
 		foreach ($file as $key => $value) {
 			if ($value[$k] == $val) {
 				return $value;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	/**
@@ -106,6 +113,9 @@ class JsonDB
 	public function select($k, $val)
 	{
 		$file = $this->json_file();
+		if (!$file) {
+			return false;
+		}
 		$data = [];
 		foreach ($file as $key => $value) {
 			if ($value[$k] == $val) {
@@ -114,7 +124,7 @@ class JsonDB
 			}
 		}
 		if (!$select) {
-			return false;
+			return null;
 		}
 		return $data;
 	}
@@ -126,6 +136,9 @@ class JsonDB
 
 	public function json_file()
 	{
+		if (!file_exists($this->data_path)) {
+			return false;
+		}
 		$data = json_decode(file_get_contents($this->data_path), true);
 		if (is_array($data)) {
 			return $data;
