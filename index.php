@@ -20,4 +20,8 @@ print_r($DB->find('b', '测试4'));
 
 // 查询多条数据
 print_r($DB->select('b', '测试4'));
+
+// 自定义存储路径
+$DB = new JsonDB('json_data','测试/数据');
+print_r($DB->data_path);
 ?>

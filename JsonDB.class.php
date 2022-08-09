@@ -10,7 +10,7 @@
 class JsonDB
 {
 	//定义数据库文件名称
-	private $data_path;
+	public $data_path;
 	private $path;
 
 	//构造函数，初始化的时候最先执行
