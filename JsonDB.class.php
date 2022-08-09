@@ -52,15 +52,16 @@ class JsonDB
 		$update = 0;
 		foreach ($file as $key => $value) {
 			if ($value[$k] == $val) {
+				$update++;
 				foreach ($array as $array_key => $array_value) {
-					$update++;
 					$file[$key][$array_key] = $array_value;
 				}
 			}
 		}
 		if (empty($update)) {
-			return $update;
+			return false;
 		}
+		$this->array_file($file);
 		return $update;
 	}
 
@@ -128,12 +129,11 @@ class JsonDB
 		}
 		return $data;
 	}
-
+	
 	public function json_encode($array)
 	{
 		return json_encode($array, 128 | 256);
 	}
-
 	public function json_file()
 	{
 		if (!file_exists($this->data_path)) {
@@ -146,7 +146,6 @@ class JsonDB
 			$this->DbError('文件格式错误！');
 		}
 	}
-
 	private function array_file($array)
 	{
 		if (!is_array($array)) {
@@ -154,7 +153,6 @@ class JsonDB
 		}
 		return file_put_contents($this->data_path, $this->json_encode($array));
 	}
-
 	private function DbError($msg)
 	{
 		exit('JsonDB error：' . $msg);
