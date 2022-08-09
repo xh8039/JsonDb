@@ -147,3 +147,4 @@ class JsonDB
 		exit('JsonDB error：' . $msg);
 	}
 }
+?>
