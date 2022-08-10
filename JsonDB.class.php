@@ -59,7 +59,7 @@ class JsonDB
 			$data = $this->json_file();
 		} else {
 			@mkdir($this->data_folder, 0755, true);
-			$data = [];
+			$data = array();
 		}
 		$insertAll = 0;
 		foreach ($array as $value) {
