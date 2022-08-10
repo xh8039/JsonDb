@@ -61,10 +61,16 @@ class JsonDB
 			@mkdir($this->data_folder, 0755, true);
 			$data = [];
 		}
+		$insertAll = 0;
 		foreach ($array as $value) {
+			$insertAll++;
 			$data[] = $value;
 		}
-		return $this->array_file($data);
+		if ($this->array_file($data)) {
+			return $insertAll;
+		}else {
+			return false;
+		}
 	}
 
 	/**
@@ -191,4 +197,3 @@ class JsonDB
 		exit('JsonDB Error：' . $msg);
 	}
 }
-?>
