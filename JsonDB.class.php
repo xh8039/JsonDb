@@ -16,20 +16,20 @@ class JsonDB
 	//构造函数，初始化的时候最先执行
 	public function __construct($data_path, $options = [])
 	{
-		$options['path'] = $options['path'] ? $options['path'] : '';
-		if (!$options['data_type']) {
+		@$options['path'] = $options['path'] ? $options['path'] : '';
+		if (@$options['data_type'] !== false) {
 			$options['data_type'] = true;
 		}
-		if ($options['data_type'] == 0) {
-			$options['data_type'] = false;
-		}
-		// $options['data_type'] = $options['data_type'] == null ? $options['data_type'];
-		$options['data_type'] = $options['data_type'] ? true : false;
 		if (isset($options['path'])) {
 			$options['path'] .= '/';
 		}
+		if ($_SERVER['DOCUMENT_ROOT']) {
+			$DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] + '/';
+		} else {
+			$DOCUMENT_ROOT = '.';
+		}
 		$this->options = $options;
-		$this->data_folder = $_SERVER['DOCUMENT_ROOT'] . '/' . $options['path'] . 'JsonData'; //存储的目录
+		$this->data_folder = $DOCUMENT_ROOT . $options['path'] . 'JsonData'; //存储的目录
 		$this->data_path = "$this->data_folder/$data_path" . ($options['data_type'] ? '' : '.json');
 	}
 
@@ -70,15 +70,13 @@ class JsonDB
 	/**
 	 * 更新数据
 	 * @param $array 要更新的数组 保留原本数据
-	 * @param $k 指定的数据键
-	 * @param $val 指定的数据键值
 	 */
-	public function update(array $array, $k, $val)
+	public function update(array $array)
 	{
 		$file = $this->json_file();
 		$update = 0;
 		foreach ($file as $key => $value) {
-			if ($value[$k] == $val) {
+			if ($value[$this->field_name] == $this->field_value) {
 				$update++;
 				foreach ($array as $array_key => $array_value) {
 					$file[$key][$array_key] = $array_value;
@@ -94,15 +92,13 @@ class JsonDB
 
 	/**
 	 * 删除数据
-	 * @param $k 指定的数据键
-	 * @param $val 指定的数据键值
 	 */
-	public function delete($k, $val)
+	public function delete()
 	{
 		$file = $this->json_file();
 		$delete = 0;
 		foreach ($file as $key => $value) {
-			if ($value[$k] == $val) {
+			if ($value[$this->field_name] == $this->field_value) {
 				$delete++;
 				unset($file[$key]);
 			}
@@ -116,17 +112,18 @@ class JsonDB
 
 	/**
 	 * 查询单条数据
-	 * @param $k 指定的数据键
-	 * @param $val 指定的数据键值
 	 */
-	public function find($k, $val)
+	public function find()
 	{
+		if (!@$this->field_name) {
+			$this->DbError('未输入查询字段名');
+		}
 		$file = $this->json_file();
 		if (!$file) {
 			return false;
 		}
 		foreach ($file as $key => $value) {
-			if ($value[$k] == $val) {
+			if ($value[$this->field_name] == $this->field_value) {
 				return $value;
 			}
 		}
@@ -135,18 +132,19 @@ class JsonDB
 
 	/**
 	 * 查询多条数据
-	 * @param $k 指定的数据键
-	 * @param $val 指定的数据键值
 	 */
-	public function select($k, $val)
+	public function select()
 	{
+		if (!@$this->field_name) {
+			$this->DbError('未输入查询字段名');
+		}
 		$file = $this->json_file();
 		if (!$file) {
 			return false;
 		}
 		$data = [];
 		foreach ($file as $key => $value) {
-			if ($value[$k] == $val) {
+			if ($value[$this->field_name] == $this->field_value) {
 				$select = true;
 				$data[] = $value;
 			}
@@ -157,6 +155,12 @@ class JsonDB
 		return $data;
 	}
 
+	public function where($field_name, $field_value)
+	{
+		$this->field_name = $field_name;
+		$this->field_value = $field_value;
+		return $this;
+	}
 	public function json_encode($array)
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
@@ -164,7 +168,7 @@ class JsonDB
 	public function json_file()
 	{
 		if (!file_exists($this->data_path)) {
-			return false;
+			$this->DbError('找不到数据文件 查找文件路径为：' . $this->data_path);
 		}
 		$data = file_get_contents($this->data_path);
 		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
@@ -184,6 +188,7 @@ class JsonDB
 	}
 	private function DbError($msg)
 	{
-		exit('JsonDB error：' . $msg);
+		exit('JsonDB Error：' . $msg);
 	}
 }
+?>
