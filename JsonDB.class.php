@@ -2,35 +2,34 @@
 
 /**
  * JsonDB
- * @Description 纯json文件数据库
- * @version 1.0.0
+ * @Description 纯JSON文件数据库
+ * @version 1.1.0
  * @author 易航
  * @link http://blog.bri6.cn
  */
 class JsonDB
 {
-	//定义数据库文件名称
-	public $data_path;
-	private $options;
 
 	//构造函数，初始化的时候最先执行
-	public function __construct($data_path, $options = [])
+	public function __construct($options = [])
 	{
 		@$options['path'] = $options['path'] ? $options['path'] : '';
 		if (@$options['data_type'] !== false) {
 			$options['data_type'] = true;
 		}
-		if (isset($options['path'])) {
+		if ($options['path']) {
 			$options['path'] .= '/';
 		}
 		if ($_SERVER['DOCUMENT_ROOT']) {
-			$DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] + '/';
+			$this->DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] . '/';
 		} else {
-			$DOCUMENT_ROOT = '.';
+			$this->DOCUMENT_ROOT = '.';
+		}
+		if (@$options['data_path']) {
+			$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'JsonData'; //存储的目录
+			$this->data_path = $this->data_folder . '/' . $options['data_path'] . ($options['data_type'] ? '' : '.json');
 		}
 		$this->options = $options;
-		$this->data_folder = $DOCUMENT_ROOT . $options['path'] . 'JsonData'; //存储的目录
-		$this->data_path = "$this->data_folder/$data_path" . ($options['data_type'] ? '' : '.json');
 	}
 
 	/**
@@ -68,7 +67,7 @@ class JsonDB
 		}
 		if ($this->array_file($data)) {
 			return $insertAll;
-		}else {
+		} else {
 			return false;
 		}
 	}
@@ -82,6 +81,9 @@ class JsonDB
 		$file = $this->json_file();
 		$update = 0;
 		foreach ($file as $key => $value) {
+			if (!$value['id']) {
+				$value['id'] = $key;
+			}
 			if ($value[$this->field_name] == $this->field_value) {
 				$update++;
 				foreach ($array as $array_key => $array_value) {
@@ -104,15 +106,22 @@ class JsonDB
 		$file = $this->json_file();
 		$delete = 0;
 		foreach ($file as $key => $value) {
+			if (!$value['id']) {
+				$value['id'] = $key;
+			}
 			if ($value[$this->field_name] == $this->field_value) {
 				$delete++;
 				unset($file[$key]);
 			}
 		}
+		$data = [];
+		foreach ($file as $value) {
+			$data[] = $value;
+		}
 		if (empty($delete)) {
 			return false;
 		}
-		$this->array_file($file);
+		$this->array_file($data);
 		return $delete;
 	}
 
@@ -129,6 +138,9 @@ class JsonDB
 			return false;
 		}
 		foreach ($file as $key => $value) {
+			if (!$value['id']) {
+				$value['id'] = $key;
+			}
 			if ($value[$this->field_name] == $this->field_value) {
 				return $value;
 			}
@@ -145,11 +157,11 @@ class JsonDB
 			$this->DbError('未输入查询字段名');
 		}
 		$file = $this->json_file();
-		if (!$file) {
-			return false;
-		}
 		$data = [];
 		foreach ($file as $key => $value) {
+			if (!$value['id']) {
+				$value['id'] = $key;
+			}
 			if ($value[$this->field_name] == $this->field_value) {
 				$select = true;
 				$data[] = $value;
@@ -161,6 +173,22 @@ class JsonDB
 		return $data;
 	}
 
+	// 查询所有数据
+	public function selectAll()
+	{
+		$data = $this->json_file('id');
+		if (count($data) == 1) {
+			$data = $data[0];
+		}
+		return $data;
+	}
+
+	public function table($data_path)
+	{
+		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'JsonData'; //存储的目录
+		$this->data_path = "$this->data_folder/$data_path" . ($this->options['data_type'] ? '' : '.json');
+		return $this;
+	}
 	public function where($field_name, $field_value)
 	{
 		$this->field_name = $field_name;
@@ -171,18 +199,24 @@ class JsonDB
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
 	}
-	public function json_file()
+	public function json_file($option = false)
 	{
 		if (!file_exists($this->data_path)) {
 			$this->DbError('找不到数据文件 查找文件路径为：' . $this->data_path);
 		}
 		$data = file_get_contents($this->data_path);
 		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
-		if (is_array($data)) {
-			return $data;
-		} else {
+		if (!is_array($data)) {
 			$this->DbError('文件格式错误！');
 		}
+		if ($option == 'id') {
+			foreach ($data as $key => $value) {
+				if (!$value['id']) {
+					$data[$key]['id'] = $key;
+				}
+			}
+		}
+		return $data;
 	}
 	private function array_file($array)
 	{
