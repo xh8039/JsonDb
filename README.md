@@ -27,24 +27,24 @@ include('./JsonDB.class.php');
 $optisons = [
 	'data_type' => false //关闭数据压缩 方便调试
 ];
-$DB = new JsonDB('json_data', $optisons);
+$DB = new JsonDB($optisons);
 
 // 添加数据
-$DB->insert([
+$DB->table('json_data')->insert([
 	'a' => 5,
 	'b' => "测试5"
 ]);
 
 // // 删除数据
-$DB->where('b', '测试3')->delete();
+$DB->table('json_data')->where('b', '测试3')->delete();
 
 // 更新数据
-$DB->where('b', '测试4')->update(['c' => '测试测试']);
+$DB->table('json_data')->where('b', '测试4')->update(['c' => '测试测试']);
 
 // 查询单条数据
-$DB->where('b', '测试')->find();
+$DB->table('json_data')->where('b', '测试')->find();
 
 // 查询多条数据
-$DB->where('b', '测试4')->select();
+$DB->table('json_data')->where('b', '测试4')->select();
 ?>
 ```
