@@ -80,46 +80,54 @@ class JsonDB
 	{
 		$file = $this->json_file();
 		$update = 0;
-		foreach ($file as $key => $value) {
-			if (!$value['id']) {
-				$value['id'] = $key;
-			}
-			if ($value[$this->field_name] == $this->field_value) {
+		$where = $this->whereData;
+		foreach ($where as $key => $value) {
+			foreach ($array as $array_key => $array_value) {
 				$update++;
-				foreach ($array as $array_key => $array_value) {
-					$file[$key][$array_key] = $array_value;
-				}
+				$file[$key][$array_key] = $array_value;
 			}
-		}
-		if (empty($update)) {
-			return false;
 		}
 		$this->array_file($file);
 		return $update;
 	}
 
 	/**
-	 * 删除数据
+	 * 删除部分数据
 	 */
-	public function delete()
+	public function delete(array $array)
 	{
 		$file = $this->json_file();
 		$delete = 0;
-		foreach ($file as $key => $value) {
-			if (!$value['id']) {
-				$value['id'] = $key;
-			}
-			if ($value[$this->field_name] == $this->field_value) {
+		$where = $this->whereData;
+		foreach ($where as $key => $value) {
+			foreach ($array as $array_value) {
 				$delete++;
-				unset($file[$key]);
+				unset($file[$key][$array_value]);
 			}
+		}
+		$this->array_file($file);
+		return $delete;
+	}
+
+	/**
+	 * 删除所有数据
+	 * @param $type 删除整个表时使用布尔值true 否则留空
+	 */
+	public function deleteAll($type = false)
+	{
+		if ($type === true) {
+			return unlink($this->data_path);
+		}
+		$file = $this->json_file();
+		$delete = 0;
+		$where = $this->whereData;
+		foreach ($where as $key => $value) {
+			$delete++;
+			unset($file[$key]);
 		}
 		$data = [];
 		foreach ($file as $value) {
 			$data[] = $value;
-		}
-		if (empty($delete)) {
-			return false;
 		}
 		$this->array_file($data);
 		return $delete;
@@ -130,20 +138,12 @@ class JsonDB
 	 */
 	public function find()
 	{
-		if (!@$this->field_name) {
-			$this->DbError('未输入查询字段名');
-		}
-		$file = $this->json_file();
-		if (!$file) {
-			return false;
-		}
-		foreach ($file as $key => $value) {
+		$where = $this->whereData;
+		foreach ($where as $key => $value) {
 			if (!$value['id']) {
 				$value['id'] = $key;
 			}
-			if ($value[$this->field_name] == $this->field_value) {
-				return $value;
-			}
+			return $value;
 		}
 		return null;
 	}
@@ -153,24 +153,17 @@ class JsonDB
 	 */
 	public function select()
 	{
-		if (!@$this->field_name) {
-			$this->DbError('未输入查询字段名');
-		}
-		$file = $this->json_file();
-		$data = [];
-		foreach ($file as $key => $value) {
+		$where = $this->whereData;
+		foreach ($where as $key => $value) {
+			$select = true;
 			if (!$value['id']) {
 				$value['id'] = $key;
-			}
-			if ($value[$this->field_name] == $this->field_value) {
-				$select = true;
-				$data[] = $value;
 			}
 		}
 		if (!$select) {
 			return null;
 		}
-		return $data;
+		return $where;
 	}
 
 	// 查询所有数据
@@ -191,8 +184,17 @@ class JsonDB
 	}
 	public function where($field_name, $field_value)
 	{
-		$this->field_name = $field_name;
-		$this->field_value = $field_value;
+		$file = $this->whereData ? $this->whereData : $this->json_file();
+		$data = [];
+		foreach ($file as $key => $value) {
+			if (!$value['id']) {
+				$value['id'] = $key;
+			}
+			if ($value[$field_name] == $field_value) {
+				$data[$key] = $file[$key];
+			}
+		}
+		$this->whereData = $data;
 		return $this;
 	}
 	public function json_encode($array)
