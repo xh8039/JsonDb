@@ -3,7 +3,7 @@
 /**
  * JsonDB
  * @Description 纯JSON文件数据库
- * @version 1.1.0
+ * @version 1.1.1
  * @author 易航
  * @link http://blog.bri6.cn
  */
@@ -26,7 +26,7 @@ class JsonDB
 			$this->DOCUMENT_ROOT = '.';
 		}
 		if (@$options['data_path']) {
-			$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'JsonData'; //存储的目录
+			$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
 			$this->data_path = $this->data_folder . '/' . $options['data_path'] . ($options['data_type'] ? '' : '.json');
 		}
 		$this->options = $options;
@@ -88,6 +88,7 @@ class JsonDB
 			}
 		}
 		$this->array_file($file);
+		$this->whereData = false;
 		return $update;
 	}
 
@@ -106,6 +107,7 @@ class JsonDB
 			}
 		}
 		$this->array_file($file);
+		$this->whereData = false;
 		return $delete;
 	}
 
@@ -130,6 +132,7 @@ class JsonDB
 			$data[] = $value;
 		}
 		$this->array_file($data);
+		$this->whereData = false;
 		return $delete;
 	}
 
@@ -139,8 +142,9 @@ class JsonDB
 	public function find()
 	{
 		$where = $this->whereData;
+		$this->whereData = false;
 		foreach ($where as $key => $value) {
-			if (!$value['id']) {
+			if (@!$value['id']) {
 				$value['id'] = $key;
 			}
 			return $value;
@@ -160,6 +164,7 @@ class JsonDB
 				$value['id'] = $key;
 			}
 		}
+		$this->whereData = false;
 		if (!$select) {
 			return null;
 		}
@@ -178,19 +183,19 @@ class JsonDB
 
 	public function table($data_path)
 	{
-		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'JsonData'; //存储的目录
+		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'json_data'; //存储的目录
 		$this->data_path = "$this->data_folder/$data_path" . ($this->options['data_type'] ? '' : '.json');
 		return $this;
 	}
 	public function where($field_name, $field_value)
 	{
-		$file = $this->whereData ? $this->whereData : $this->json_file();
+		$file = @$this->whereData ? $this->whereData : $this->json_file();
 		$data = [];
 		foreach ($file as $key => $value) {
-			if (!$value['id']) {
+			if (@!$value['id']) {
 				$value['id'] = $key;
 			}
-			if ($value[$field_name] == $field_value) {
+			if (@$value[$field_name] == $field_value) {
 				$data[$key] = $file[$key];
 			}
 		}
@@ -213,7 +218,7 @@ class JsonDB
 		}
 		if ($option == 'id') {
 			foreach ($data as $key => $value) {
-				if (!$value['id']) {
+				if (@!$value['id']) {
 					$data[$key]['id'] = $key;
 				}
 			}
