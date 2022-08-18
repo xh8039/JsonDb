@@ -23,7 +23,7 @@ class JsonDB
 		if ($_SERVER['DOCUMENT_ROOT']) {
 			$this->DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] . '/';
 		} else {
-			$this->DOCUMENT_ROOT = '.';
+			$this->DOCUMENT_ROOT = './';
 		}
 		if (@$options['data_path']) {
 			$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
@@ -145,7 +145,7 @@ class JsonDB
 		$this->whereData = false;
 		foreach ($where as $key => $value) {
 			if (@!$value['id']) {
-				$value['id'] = $key;
+				$where[$key]['id'] = $key;
 			}
 			return $value;
 		}
@@ -160,8 +160,8 @@ class JsonDB
 		$where = $this->whereData;
 		foreach ($where as $key => $value) {
 			$select = true;
-			if (!$value['id']) {
-				$value['id'] = $key;
+			if (@!$value['id']) {
+				$where[$key]['id'] = $key;
 			}
 		}
 		$this->whereData = false;
@@ -187,16 +187,33 @@ class JsonDB
 		$this->data_path = "$this->data_folder/$data_path" . ($this->options['data_type'] ? '' : '.json');
 		return $this;
 	}
-	public function where($field_name, $field_value)
+	public function where($field_name, $field_value, $type = '=')
 	{
 		$file = @$this->whereData ? $this->whereData : $this->json_file();
 		$data = [];
-		foreach ($file as $key => $value) {
-			if (@!$value['id']) {
-				$value['id'] = $key;
+		if (func_num_args() == 3) {
+			$buffer = $type;
+			$type = $field_value;
+			$field_value = $buffer;
+			$type == '=' ? $type = '==' : $type = $type;
+			foreach ($file as $key => $value) {
+				if (@!$value['id']) {
+					$value['id'] = $key;
+				}
+				$str = 'return ' . $value[$field_name] . ' ' . $type . ' ' . $field_value . ';';
+				$result = @eval($str);
+				if ($result) {
+					$data[$key] = $file[$key];
+				}
 			}
-			if (@$value[$field_name] == $field_value) {
-				$data[$key] = $file[$key];
+		} else {
+			foreach ($file as $key => $value) {
+				if (@!$value['id']) {
+					$value['id'] = $key;
+				}
+				if (@$value[$field_name] == $field_value) {
+					$data[$key] = $file[$key];
+				}
 			}
 		}
 		$this->whereData = $data;
