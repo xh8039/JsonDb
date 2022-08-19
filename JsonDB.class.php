@@ -35,7 +35,8 @@ class JsonDb
 
 	/**
 	 * 添加单条数据
-	 * @param array $array 要添加的数组
+	 * @access public
+	 * @param array $array 数据
 	 */
 	public function insert(array $array)
 	{
@@ -50,8 +51,10 @@ class JsonDb
 	}
 
 	/**
-	 * 添加多条数据
-	 * @param array $array 要添加的数组
+	 * 批量添加数据
+	 * @access public
+	 * @param array $array 数据集
+	 * @return integer
 	 */
 	public function insertAll(array $array)
 	{
@@ -65,6 +68,9 @@ class JsonDb
 		foreach ($array as $value) {
 			$insertAll++;
 			$data[] = $value;
+			if ((!empty($this->limit)) && ($insertAll == $this->limit)) {
+				break;
+			}
 		}
 		if ($this->array_file($data)) {
 			return $insertAll;
@@ -75,7 +81,9 @@ class JsonDb
 
 	/**
 	 * 更新数据
-	 * @param array $array 要更新的数组 保留原本数据
+	 * @access public
+	 * @param array $array 要更新的数据
+	 * @return integer
 	 */
 	public function update(array $array)
 	{
@@ -86,6 +94,9 @@ class JsonDb
 			foreach ($array as $array_key => $array_value) {
 				$update++;
 				$file[$key][$array_key] = $array_value;
+				if ((!empty($this->limit)) && ($update == $this->limit)) {
+					break;
+				}
 			}
 		}
 		$this->array_file($file);
@@ -95,7 +106,9 @@ class JsonDb
 
 	/**
 	 * 删除部分数据
+	 * @access public
 	 * @param array $array 要删除的部分数据字段名
+	 * @return int
 	 */
 	public function delete(array $array)
 	{
@@ -106,6 +119,9 @@ class JsonDb
 			foreach ($array as $array_value) {
 				$delete++;
 				unset($file[$key][$array_value]);
+				if ((!empty($this->limit)) && ($delete == $this->limit)) {
+					break;
+				}
 			}
 		}
 		$this->array_file($file);
@@ -115,7 +131,9 @@ class JsonDb
 
 	/**
 	 * 删除所有数据
+	 * @access public
 	 * @param bool $type 删除整个表时使用布尔值true 否则留空
+	 * @return int
 	 */
 	public function deleteAll($type = false)
 	{
@@ -128,6 +146,9 @@ class JsonDb
 		foreach ($where as $key => $value) {
 			$delete++;
 			unset($file[$key]);
+			if ((!empty($this->limit)) && ($delete == $this->limit)) {
+				break;
+			}
 		}
 		$data = [];
 		foreach ($file as $value) {
@@ -140,6 +161,8 @@ class JsonDb
 
 	/**
 	 * 查询单条数据
+	 * @access public
+	 * @return array
 	 */
 	public function find()
 	{
@@ -156,6 +179,8 @@ class JsonDb
 
 	/**
 	 * 查询多条数据
+	 * @access public
+	 * @return array
 	 */
 	public function select()
 	{
@@ -173,7 +198,11 @@ class JsonDb
 		return $where;
 	}
 
-	// 查询所有数据
+	/**
+	 * 查询所有数据
+	 * @access public
+	 * @return array
+	 */
 	public function selectAll()
 	{
 		$data = $this->json_file('id');
@@ -183,13 +212,52 @@ class JsonDb
 		return $data;
 	}
 
-	public function table($data_path)
+	/**
+	 * 指定查询数量
+	 * @access public
+	 * @param int $offset 起始位置
+	 * @param int $length 查询数量
+	 * @return $this
+	 */
+	public function limit(int $offset, int $length = null)
 	{
-		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'json_data'; //存储的目录
-		$this->data_path = "$this->data_folder/$data_path" . ($this->options['data_type'] ? '' : '.json');
+		$this->limit = $offset;
+		$file = @$this->whereData ? $this->whereData : $this->json_file();
+		$data = [];
+		if (is_null($length)) {
+			$length = count($file);
+		}
+		foreach ($file as $key => $value) {
+			if ($key > $offset || $key < $length) {
+				$data[$key] = $value;
+			}
+		}
+		$this->whereData = $data;
 		return $this;
 	}
-	public function where($field_name, $operator = null, $field_value = null)
+
+	/**
+	 * 指定当前操作的数据表
+	 * @access public
+	 * @param mixed $table 表名
+	 * @return $this
+	 */
+	public function table($table)
+	{
+		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'json_data'; //存储的目录
+		$this->data_path = "$this->data_folder/$table" . ($this->options['data_type'] ? '' : '.json');
+		return $this;
+	}
+
+	/**
+	 * 根据字段条件过滤数组中的元素
+	 * @access public
+	 * @param string $field    字段名
+	 * @param mixed  $operator 操作符
+	 * @param mixed  $value    数据
+	 * @return $this
+	 */
+	public function where(string $field_name, $operator = null, $field_value = null)
 	{
 		$file = @$this->whereData ? $this->whereData : $this->json_file();
 		$data = [];
@@ -248,6 +316,14 @@ class JsonDb
 		$this->whereData = $data;
 		return $this;
 	}
+
+	/**
+	 * LIKE查询
+	 * @access public
+	 * @param string $field 字段名
+	 * @param string $value 数据
+	 * @return $this
+	 */
 	public function whereLike($field_name, $field_value)
 	{
 		$file = @$this->whereData ? $this->whereData : $this->json_file();
@@ -274,6 +350,8 @@ class JsonDb
 		$this->whereData = $data;
 		return $this;
 	}
+
+	
 	public function json_encode($array)
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));

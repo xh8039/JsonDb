@@ -79,6 +79,12 @@ $DB->table('json_data')->where('id', 1)->where('a', 2)->select();
 $select = $DB->table('json_data')->where('`field_id` == 0 || `field_b` == `测试4`')->select();
 
 // 字段LIKE查询
-$DB->table('json_data')->whereLike('b','%测试')->select();
+$DB->table('json_data')->whereLike('b', '%测试')->select();
+
+// 限制结果数量
+$DB->table('user')->where('status', 1)->limit(10)->select();
+
+// 限制每次最大写入数量
+$DB->table('user')->limit(100)->insertAll($userList);
 ?>
 ```
