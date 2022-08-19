@@ -74,5 +74,11 @@ $DB->table('json_data')->where('id', '>', 4)->select();
 
 // 链式where
 $DB->table('json_data')->where('id', 1)->where('a', 2)->select();
+
+// 自定义判断条件
+$select = $DB->table('json_data')->where('`field_id` == 0 || `field_b` == `测试4`')->select();
+
+// 字段LIKE查询
+$DB->table('json_data')->whereLike('b','%测试')->select();
 ?>
 ```
