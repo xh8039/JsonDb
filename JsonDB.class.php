@@ -230,6 +230,9 @@ class JsonDb
 			}
 		}
 		if (func_num_args() == 3) {
+			if (strtolower($operator) == 'like') {
+				$this->whereLike($field_name, $field_value);
+			}
 			$operator == '=' ? $operator = '==' : $operator = $operator;
 			foreach ($file as $key => $value) {
 				if (@!$value['id']) {

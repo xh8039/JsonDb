@@ -47,7 +47,7 @@ $DB->table('json_data')->where('b', '测试4')->select();
 // 查询所有数据
 $DB->table('json_data')->selectAll();
 
-// 自定义操作符
+// 自定义查询表达式
 $DB->table('json_data')->where('id', '>', 4)->select();
 
 // 链式where
