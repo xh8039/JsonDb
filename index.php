@@ -6,7 +6,7 @@ include('./JsonDB.class.php');
 $optisons = [
 	'data_type' => false, //关闭数据压缩 方便调试
 ];
-$DB = new JsonDB($optisons);
+$DB = new JsonDb($optisons);
 
 // 添加单条数据
 $DB->table('json_data')->insert([
@@ -47,8 +47,14 @@ $DB->table('json_data')->where('b', '测试4')->select();
 // 查询所有数据
 $DB->table('json_data')->selectAll();
 
-// 自定义判断条件
+// 自定义操作符
 $DB->table('json_data')->where('id', '>', 4)->select();
 
 // 链式where
 $DB->table('json_data')->where('id', 1)->where('a', 2)->select();
+
+// 自定义判断条件
+$select = $DB->table('json_data')->where('`field_id` == 0 || `field_b` == `测试4`')->select();
+
+// 字段LIKE查询
+$DB->table('json_data')->whereLike('b','%测试')->select();
