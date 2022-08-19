@@ -1,5 +1,5 @@
 <?php
-include('./JsonDB.class.php');
+include('./JsonDb.class.php');
 
 // 自定义配置项 具体配置请参考文档：https://gitee.com/yh_IT/json-db/wikis
 
