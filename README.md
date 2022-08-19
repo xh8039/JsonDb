@@ -13,7 +13,7 @@ JsonDB 是一个由原生PHP实现的文件数据库，JsonDB只有一个文件�
 
 ```php
 include('./JsonDB.class.php');
-$DB = new JsonDB();
+$DB = new JsonDb();
 ```
 
 
@@ -28,7 +28,7 @@ include('./JsonDB.class.php');
 $optisons = [
 	'data_type' => false, //关闭数据压缩 方便调试
 ];
-$DB = new JsonDB($optisons);
+$DB = new JsonDb($optisons);
 
 // 添加单条数据
 $DB->table('json_data')->insert([
