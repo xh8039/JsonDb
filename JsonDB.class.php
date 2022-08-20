@@ -26,9 +26,9 @@ class JsonDb
 		} else {
 			$this->DOCUMENT_ROOT = './';
 		}
-		if (@$options['data_path']) {
-			$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
-			$this->data_path = $this->data_folder . '/' . $options['data_path'] . ($options['data_type'] ? '' : '.json');
+		$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
+		if (@$options['table_name']) {
+			$this->data_path = $this->data_folder . '/' . $options['table_name'] . ($options['data_type'] ? '' : '.json');
 		}
 		$this->options = $options;
 	}
@@ -244,7 +244,6 @@ class JsonDb
 	 */
 	public function table($table)
 	{
-		$this->data_folder = $this->DOCUMENT_ROOT . $this->options['path'] . 'json_data'; //存储的目录
 		$this->data_path = "$this->data_folder/$table" . ($this->options['data_type'] ? '' : '.json');
 		return $this;
 	}
@@ -351,7 +350,7 @@ class JsonDb
 		return $this;
 	}
 
-	
+
 	public function json_encode($array)
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
