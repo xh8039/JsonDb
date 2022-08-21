@@ -82,6 +82,7 @@ class JsonDb
 			$data = [];
 			$data[] = [
 				'table_name' => $table_name,
+				'primary_key' => ['id'],
 				'auto_increme_int' => [
 					'id' => 0
 				]

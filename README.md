@@ -28,13 +28,13 @@ $optisons = [
 ];
 $DB = new JsonDb($optisons);
 
-// 添加单条数据
+// 插入单条数据
 $DB->table('json_data')->insert([
 	'a' => 5,
 	'b' => "测试5"
 ]);
 
-// 添加多条数据
+// 批量插入数据
 $DB->table('json_data')->insertAll([
 	[
 		'a' => 5,
@@ -84,5 +84,17 @@ $DB->table('user')->where('status', 1)->limit(10)->select();
 
 // 限制每次最大写入数量
 $DB->table('user')->limit(100)->insertAll($userList);
+
+// 设置表中的主键字段
+$DB->table('JsonDb')->primaryKeyAdd('user');
+
+// 批量设置表中的主键字段
+$DB->table('JsonDb')->primaryKeyAdd(['name','uid']);
+
+// 设置自动递增整数字段
+$DB->table('JsonDb')->autoIncremeIntAdd('uid');
+
+// 批量设置自动递增整数字段
+$DB->table('JsonDb')->autoIncremeIntAdd(['pid','mid']);
 ?>
 ```
