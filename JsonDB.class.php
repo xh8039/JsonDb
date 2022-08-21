@@ -37,22 +37,68 @@ class JsonDb
 		// 数据存储的目录
 		$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
 
-		// 单表模式
-		if (@$options['table_name']) {
-			$this->data_path = $this->data_folder . '/' . $options['table_name'] . ($options['data_type'] ? '' : '.json');
-		}
-
 		// 调试模式
 		if (@$options['debug'] !== true) {
 			$options['debug'] = false;
 		}
-
+		$this->optionsTableName = 'database_options';
 		$this->options = $options;
 
-		// 创建配置文件
-		$this->optionsTableName = 'database_options';
+		// 单表模式
+		if (@$options['table_name']) {
+			$this->table($options['table_name']);
+		} else {
+			$options['table_name'] = null;
+		}
+	}
+
+	function initialize()
+	{
+		// 获取原来的表路径
+		$data_path = $this->data_path ? $this->data_path : null;
+
+		// 将表路径指向配置文件
+		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
+
+		// 检测表是否存在
 		if (!$this->tableExists($this->optionsTableName)) {
-			$this->table($this->optionsTableName)->array_file([]);
+			// 不存在便创建一个空表
+			$this->array_file(array());
+		}
+
+		// 检测是否有表名 没有则无需下面操作
+		if ((@!$this->tableName) && (!$this->options['table_name'])) {
+			return false;
+		}
+
+		// 获取要添加配置文件的表的名字
+		$table_name = $this->tableName ? $this->tableName : $this->options['table_name'];
+
+		// 因为已经指向 data_path 直接查询配置文件即可
+		$table_options = $this->where('table_name', $table_name)->find();
+
+		// 如果没有该表名的配置那么添加该表命的配置
+		if (empty($table_options)) {
+			$data = [];
+			$data[] = [
+				'table_name' => $table_name,
+				'auto_increme_int' => [
+					'id' => 0
+				]
+			];
+			$this->array_file($data);
+		}
+
+		// 检测主键配置是否存在
+		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
+			$this->primaryKeyMode = true;
+		} else {
+			$this->primaryKeyMode = false;
+		}
+
+		// 恢复以前指向的表路径
+		if ($data_path) {
+			$this->data_path = $data_path;
 		}
 	}
 
@@ -64,14 +110,41 @@ class JsonDb
 	 */
 	public function insert(array $array)
 	{
-		if (file_exists($this->data_path)) {
-			if ($this->primaryKeyMode) {
-				$this->primaryKeyExists($array);
-			}
-			$data = $this->json_file();
-		} else {
+		// 调用主键检测
+		$this->primaryKeyExists($array);
+
+		// 获取表中原来的数据
+		$data = $this->json_file();
+
+		// 如果数据为空那么将表指定为一个空数组
+		if (empty($data)) {
 			$data = [];
 		}
+
+		// 获取被添加数据的表的配置项
+		$table_options = $this->tableOptions();
+		$auto_increme_int = $table_options['auto_increme_int'];
+		if (is_array($auto_increme_int)) {
+			foreach ($auto_increme_int as $key => $value) {
+				$array[$key] = $value;
+				$auto_increme_int[$key]++;
+			}
+
+			// 保留原来的表路径
+			$data_path = $this->data_path;
+
+			// 将下面要操作的表切换为存储配置数据的表
+			$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
+
+			// 更新配置文件中的此表的自动递增值
+			$this->where('table_name', $this->tableName)->update([
+				'auto_increme_int' => $auto_increme_int
+			]);
+
+			// 恢复原来表的路径
+			$this->data_path = $data_path;
+		}
+
 		$data[] = $array;
 		return $this->array_file($data);
 	}
@@ -84,29 +157,15 @@ class JsonDb
 	 */
 	public function insertAll(array $array)
 	{
-		if (file_exists($this->data_path)) {
-			if ($this->primaryKeyMode) {
-				foreach ($array as $value) {
-					$this->primaryKeyExists($value);
-				}
-			}
-			$data = $this->json_file();
-		} else {
-			$data = array();
-		}
 		$insertAll = 0;
 		foreach ($array as $value) {
-			$insertAll++;
-			$data[] = $value;
-			if ((!empty($this->limit)) && ($insertAll == $this->limit)) {
+			if ($insertAll == $this->limit) {
 				break;
 			}
+			$insertAll++;
+			$this->insert($value);
 		}
-		if ($this->array_file($data)) {
-			return $insertAll;
-		} else {
-			return false;
-		}
+		return $insertAll;
 	}
 
 	/**
@@ -124,7 +183,7 @@ class JsonDb
 			foreach ($array as $array_key => $array_value) {
 				$update++;
 				$file[$key][$array_key] = $array_value;
-				if ((!empty($this->limit)) && ($update == $this->limit)) {
+				if ($update == $this->limit) {
 					break;
 				}
 			}
@@ -149,7 +208,7 @@ class JsonDb
 			foreach ($array as $array_value) {
 				$delete++;
 				unset($file[$key][$array_value]);
-				if ((!empty($this->limit)) && ($delete == $this->limit)) {
+				if ($delete == $this->limit) {
 					break;
 				}
 			}
@@ -176,12 +235,11 @@ class JsonDb
 		foreach ($where as $key => $value) {
 			$delete++;
 			unset($file[$key]);
-			if ((!empty($this->limit)) && ($delete == $this->limit)) {
+			if ($delete == $this->limit) {
 				break;
 			}
 		}
-		$file = array_values($file);
-		$this->array_file($file);
+		$this->array_file(array_values($file));
 		$this->whereData = false;
 		return $delete;
 	}
@@ -271,21 +329,12 @@ class JsonDb
 	 */
 	public function table($table_name)
 	{
-		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
-		$table_options = $this->where('table_name', $table_name)->find();
-		if (!$table_options) {
-			$this->insert([
-				'table_name' => $table_name
-			]);
-		}
-		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
-			$this->primaryKeyMode = true;
-		} else {
-			$this->primaryKeyMode = false;
-		}
-
 		$this->data_path = "$this->data_folder/$table_name" . ($this->options['data_type'] ? '' : '.json');
 		$this->tableName = $table_name;
+		$this->initialize();
+		if (@!$this->limit) {
+			$this->limit = null;
+		}
 		return $this;
 	}
 
@@ -297,28 +346,73 @@ class JsonDb
 	 */
 	public function primaryKeyAdd($primary_key)
 	{
+		return $this->tableOptionsAdd('primary_key', $primary_key);
+	}
+
+	/**
+	 * 添加数据表的自动递增整数字段
+	 * @access public
+	 * @param string|array $increme_name
+	 * @return $this
+	 */
+	public function autoIncremeIntAdd($increme_name)
+	{
+		return $this->tableOptionsAdd('auto_increme_int', $increme_name);
+	}
+
+	public function tableOptionsAdd($field_name, $field_value)
+	{
 		$table_name = $this->tableName;
-		$table_options = $this->table($this->optionsTableName)->where('table_name', $table_name)->find();
-		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
-			$primary_key_list = $table_options['primary_key'];
+		$table_options = $this->tableOptions();
+		if ((is_array($table_options[$field_name])) && (!empty($table_options[$field_name]))) {
+			$field_value_list = $table_options[$field_name];
 		} else {
-			$primary_key_list = [];
+			$field_value_list = [];
 		}
-		if (is_array($primary_key)) {
-			foreach ($primary_key as $value) {
-				$primary_key_list[] = $value;
+
+		if ($field_name == 'auto_increme_int') {
+			if (is_array($field_value)) {
+				foreach ($field_value as $value) {
+					$field_value_list[$value] = 0;
+				}
+			} else {
+				$field_value_list[$field_value] = 0;
 			}
 		} else {
-			$primary_key_list[] = $primary_key;
+			if (is_array($field_value)) {
+				foreach ($field_value as $value) {
+					$field_value_list[] = $value;
+				}
+			} else {
+				$field_value_list[] = $field_value;
+			}
+			$field_value_list = array_values(array_unique($field_value_list));
 		}
-		$primary_key_list = array_values(array_unique($primary_key_list));
+
+
 		$update = $this->table($this->optionsTableName)->where('table_name', $table_name)->update([
-			'primary_key' => $primary_key_list
+			$field_name => $field_value_list
 		]);
 		if ($update) {
 			return true;
 		}
 		return $update;
+	}
+
+	/**
+	 * 获取表的配置
+	 * @access public
+	 * @param string $table_name 可选，自定义表名
+	 * @return array
+	 */
+	public function tableOptions($table_name = null)
+	{
+		$table_name = $table_name ? $table_name : $this->tableName;
+		$data_path = $this->data_path;
+		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
+		$find = $this->where('table_name', $table_name)->find();
+		$this->data_path = $data_path;
+		return $find;
 	}
 
 	/**
@@ -349,9 +443,15 @@ class JsonDb
 	 */
 	private function primaryKeyExists($array, $table_name = null)
 	{
+		if (@!$this->primaryKeyMode) {
+			return;
+		}
 		$table_name = $table_name ? $table_name : $this->tableName;
 		$table_options = $this->table($this->optionsTableName)->where('table_name', $table_name)->find();
-		if ((!is_array($table_options['primary_key'])) || (empty($table_options['primary_key']))) {
+		if (empty($table_options['primary_key'])) {
+			return false;
+		}
+		if ((!is_array($table_options['primary_key']))) {
 			return false;
 		}
 		$primary_key_list = $table_options['primary_key'];
@@ -495,10 +595,6 @@ class JsonDb
 	public function json_file($option = false)
 	{
 		if (!file_exists($this->data_path)) {
-			if ($this->options['debug']) {
-				$this->DbError('找不到数据文件 查找文件路径为：' . $this->data_path);
-				return;
-			}
 			return false;
 		}
 		$data = file_get_contents($this->data_path);
@@ -527,12 +623,8 @@ class JsonDb
 	 * @param string $table_name 自定义表名
 	 * @return int|false 成功则返回存储数据的总字节，失败则返回false
 	 */
-	private function array_file($array, $table_name = null)
+	private function array_file(array $array, $table_name = null)
 	{
-		if (!is_array($array)) {
-			$this->DbError('传入参数非数组！');
-			return;
-		}
 		$data = $this->json_encode($array);
 		if ($table_name) {
 			$this->table($table_name);
