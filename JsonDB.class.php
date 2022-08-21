@@ -3,7 +3,7 @@
 /**
  * JsonDb
  * @Description JSON文件数据库
- * @version 1.1.2
+ * @version 1.1.3
  * @author 易航
  * @blog http://blog.bri6.cn
  * @gitee https://gitee.com/yh_IT/json-db
@@ -14,36 +14,62 @@ class JsonDb
 	//构造函数，初始化的时候最先执行
 	public function __construct($options = [])
 	{
-		@$options['path'] = $options['path'] ? $options['path'] : '';
+
+		// 数据压缩模式
 		if (@$options['data_type'] !== false) {
 			$options['data_type'] = true;
 		}
-		if ($options['path']) {
+
+		// 自定义存储路径
+		if (@$options['path']) {
 			$options['path'] .= '/';
+		} else {
+			$options['path'] = '';
 		}
-		if ($_SERVER['DOCUMENT_ROOT']) {
+
+		// 检测站点根目录
+		if (@$_SERVER['DOCUMENT_ROOT']) {
 			$this->DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] . '/';
 		} else {
 			$this->DOCUMENT_ROOT = './';
 		}
+
+		// 数据存储的目录
 		$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
+
+		// 单表模式
 		if (@$options['table_name']) {
 			$this->data_path = $this->data_folder . '/' . $options['table_name'] . ($options['data_type'] ? '' : '.json');
 		}
+
+		// 调试模式
+		if (@$options['debug'] !== true) {
+			$options['debug'] = false;
+		}
+
 		$this->options = $options;
+
+		// 创建配置文件
+		$this->optionsTableName = 'database_options';
+		if (!$this->tableExists($this->optionsTableName)) {
+			$this->table($this->optionsTableName)->array_file([]);
+		}
 	}
 
 	/**
 	 * 添加单条数据
 	 * @access public
-	 * @param array $array 数据
+	 * @param array $array 要添加的数据
+	 * @return int|false 成功则以int形式返回添加数据的总字节 失败则返回false
 	 */
 	public function insert(array $array)
 	{
 		if (file_exists($this->data_path)) {
+			if ($this->primaryKeyMode) {
+				$this->primaryKeyExists($array);
+			}
 			$data = $this->json_file();
 		} else {
-			@mkdir($this->data_folder, 0755, true);
 			$data = [];
 		}
 		$data[] = $array;
@@ -59,9 +85,13 @@ class JsonDb
 	public function insertAll(array $array)
 	{
 		if (file_exists($this->data_path)) {
+			if ($this->primaryKeyMode) {
+				foreach ($array as $value) {
+					$this->primaryKeyExists($value);
+				}
+			}
 			$data = $this->json_file();
 		} else {
-			@mkdir($this->data_folder, 0755, true);
 			$data = array();
 		}
 		$insertAll = 0;
@@ -150,11 +180,8 @@ class JsonDb
 				break;
 			}
 		}
-		$data = [];
-		foreach ($file as $value) {
-			$data[] = $value;
-		}
-		$this->array_file($data);
+		$file = array_values($file);
+		$this->array_file($file);
 		$this->whereData = false;
 		return $delete;
 	}
@@ -239,26 +266,124 @@ class JsonDb
 	/**
 	 * 指定当前操作的数据表
 	 * @access public
-	 * @param mixed $table 表名
+	 * @param string $table_name 表名
 	 * @return $this
 	 */
-	public function table($table)
+	public function table($table_name)
 	{
-		$this->data_path = "$this->data_folder/$table" . ($this->options['data_type'] ? '' : '.json');
+		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
+		$table_options = $this->where('table_name', $table_name)->find();
+		if (!$table_options) {
+			$this->insert([
+				'table_name' => $table_name
+			]);
+		}
+		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
+			$this->primaryKeyMode = true;
+		} else {
+			$this->primaryKeyMode = false;
+		}
+
+		$this->data_path = "$this->data_folder/$table_name" . ($this->options['data_type'] ? '' : '.json');
+		$this->tableName = $table_name;
 		return $this;
+	}
+
+	/**
+	 * 添加数据表的主键
+	 * @access public
+	 * @param string|array $primary_key 要添加的主键 数组形式则批量添加
+	 * @return $this
+	 */
+	public function primaryKeyAdd($primary_key)
+	{
+		$table_name = $this->tableName;
+		$table_options = $this->table($this->optionsTableName)->where('table_name', $table_name)->find();
+		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
+			$primary_key_list = $table_options['primary_key'];
+		} else {
+			$primary_key_list = [];
+		}
+		if (is_array($primary_key)) {
+			foreach ($primary_key as $value) {
+				$primary_key_list[] = $value;
+			}
+		} else {
+			$primary_key_list[] = $primary_key;
+		}
+		$primary_key_list = array_values(array_unique($primary_key_list));
+		$update = $this->table($this->optionsTableName)->where('table_name', $table_name)->update([
+			'primary_key' => $primary_key_list
+		]);
+		if ($update) {
+			return true;
+		}
+		return $update;
+	}
+
+	/**
+	 * 检查指定数据表是否存在
+	 * @access public
+	 * @param string $table_name 可选 数据表名
+	 * @return bool
+	 */
+	public function tableExists($table_name = null)
+	{
+		if ($table_name) {
+			$data_path = "$this->data_folder/$table_name" . ($this->options['data_type'] ? '' : '.json');
+		} else {
+			$data_path = $this->data_path;
+		}
+		if (file_exists($data_path)) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * 检查添加数据的主键值是否存在
+	 * @access public
+	 * @param array $array 要检查的数据
+	 * @param string $table_name 可选 数据表名
+	 * @return bool
+	 */
+	private function primaryKeyExists($array, $table_name = null)
+	{
+		$table_name = $table_name ? $table_name : $this->tableName;
+		$table_options = $this->table($this->optionsTableName)->where('table_name', $table_name)->find();
+		if ((!is_array($table_options['primary_key'])) || (empty($table_options['primary_key']))) {
+			return false;
+		}
+		$primary_key_list = $table_options['primary_key'];
+		foreach ($primary_key_list as $primary_value) {
+			foreach ($array as $key => $value) {
+				if ($key == $primary_value) {
+					$seek = $this->table($table_name)->where($key, $value)->find();
+					if ($seek) {
+						$this->DbError('当前插入数据中存在相同主键值');
+						return true;
+					}
+					return false;
+				}
+			}
+		}
 	}
 
 	/**
 	 * 根据字段条件过滤数组中的元素
 	 * @access public
-	 * @param string $field    字段名
-	 * @param mixed  $operator 操作符
-	 * @param mixed  $value    数据
+	 * @param string $field_name 字段名
+	 * @param mixed  $operator 操作符 默认为 ==
+	 * @param mixed  $field_value 字段值
 	 * @return $this
 	 */
-	public function where(string $field_name, $operator = null, $field_value = null)
+	public function where($field_name, $operator = null, $field_value = null)
 	{
 		$file = @$this->whereData ? $this->whereData : $this->json_file();
+		if (!is_array($file)) {
+			$this->whereData = [];
+			return $this;
+		}
 		$data = [];
 		if (func_num_args() == 1) {
 			$operator = $field_name;
@@ -320,7 +445,7 @@ class JsonDb
 	 * LIKE查询
 	 * @access public
 	 * @param string $field 字段名
-	 * @param string $value 数据
+	 * @param mixed $value 数据
 	 * @return $this
 	 */
 	public function whereLike($field_name, $field_value)
@@ -350,22 +475,40 @@ class JsonDb
 		return $this;
 	}
 
-
+	/**
+	 * 数组转JSON数据
+	 * @access public
+	 * @param array $array 要转换的数组
+	 * @return json|string
+	 */
 	public function json_encode($array)
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
 	}
+
+	/**
+	 * 获取JSON格式的数据表
+	 * @access public
+	 * @param string $option 默认为空 值为id时返回包括ID的数组数据
+	 * @return array|false
+	 */
 	public function json_file($option = false)
 	{
 		if (!file_exists($this->data_path)) {
-			$this->DbError('找不到数据文件 查找文件路径为：' . $this->data_path);
-			return;
+			if ($this->options['debug']) {
+				$this->DbError('找不到数据文件 查找文件路径为：' . $this->data_path);
+				return;
+			}
+			return false;
 		}
 		$data = file_get_contents($this->data_path);
 		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
 		if (!is_array($data)) {
-			$this->DbError('文件格式错误！');
-			return;
+			if ($this->options['debug']) {
+				$this->DbError('文件格式错误！');
+				return;
+			}
+			return false;
 		}
 		if ($option == 'id') {
 			foreach ($data as $key => $value) {
@@ -376,17 +519,40 @@ class JsonDb
 		}
 		return $data;
 	}
-	private function array_file($array)
+
+	/**
+	 * 将数组数据存储到JSON数据表中
+	 * @access public
+	 * @param array $array 要存储的数组数据
+	 * @param string $table_name 自定义表名
+	 * @return int|false 成功则返回存储数据的总字节，失败则返回false
+	 */
+	private function array_file($array, $table_name = null)
 	{
 		if (!is_array($array)) {
 			$this->DbError('传入参数非数组！');
 			return;
 		}
 		$data = $this->json_encode($array);
+		if ($table_name) {
+			$this->table($table_name);
+		}
+		if (!file_exists($this->data_folder)) {
+			mkdir($this->data_folder, 0755, true);
+		}
 		return file_put_contents($this->data_path, ($this->options['data_type'] ? gzcompress($data) : $data));
 	}
+
+	/**
+	 * 输出一个错误信息
+	 * @access public
+	 * @param string $msg 错误信息
+	 */
 	private function DbError($msg)
 	{
 		echo ('JsonDb Error：' . $msg);
+		if ($this->options['debug']) {
+			exit;
+		}
 	}
 }
