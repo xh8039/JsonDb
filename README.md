@@ -3,7 +3,7 @@
 ## 介绍
 JsonDb 是一个由原生PHP实现的文件数据库，JsonDb只有一个文件，如果你不想使用庞大的数据库系统，或者一个站点内有多个小项目，那么JsonDb就是你最佳的选择。 JsonDb包括查询、添加、更新、删除等对数据的基本操作，适合存储数据量不大的数据
 
-使用帮助文档：[gitee.com/yh_IT/json-db/wikis](https://gitee.com/yh_IT/json-db/wikis)
+[使用帮助文档](https://gitee.com/yh_IT/json-db/wikis)
 
 ## 在线安装
 ### clone 项目到本地
