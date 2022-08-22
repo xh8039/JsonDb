@@ -7,6 +7,10 @@ JsonDb 是一个由原生PHP实现的文件数据库，JsonDb只有一个文件�
 
 ## 在线安装
 ### clone 项目到本地
+- github地址
+```
+git clone https://github.com/xh8039/JsonDb.git
+```
 - 码云地址
 ```
 git clone https://gitee.com/yh_IT/json-db.git
