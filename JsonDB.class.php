@@ -54,11 +54,8 @@ class JsonDb
 
 	function initialize()
 	{
-		// 获取原来的表路径
-		$data_path = $this->data_path ? $this->data_path : null;
-
 		// 将表路径指向配置文件
-		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
+		$this->tableSwitch($this->optionsTableName);
 
 		// 检测表是否存在
 		if (!$this->tableExists($this->optionsTableName)) {
@@ -90,17 +87,8 @@ class JsonDb
 			$this->array_file($data);
 		}
 
-		// 检测主键配置是否存在
-		if ((is_array($table_options['primary_key'])) && (!empty($table_options['primary_key']))) {
-			$this->primaryKeyMode = true;
-		} else {
-			$this->primaryKeyMode = false;
-		}
-
 		// 恢复以前指向的表路径
-		if ($data_path) {
-			$this->data_path = $data_path;
-		}
+		$this->tableSwitch($table_name);
 	}
 
 	/**
@@ -131,19 +119,13 @@ class JsonDb
 				$auto_increme_int[$key]++;
 			}
 
-			// 保留原来的表路径
-			$data_path = $this->data_path;
-
-			// 将下面要操作的表切换为存储配置数据的表
-			$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
-
 			// 更新配置文件中的此表的自动递增值
-			$this->where('table_name', $this->tableName)->update([
+			$this->tableSwitch($this->optionsTableName)->where('table_name', $this->tableName)->update([
 				'auto_increme_int' => $auto_increme_int
 			]);
 
 			// 恢复原来表的路径
-			$this->data_path = $data_path;
+			$this->tableSwitch($this->tableName);
 		}
 
 		$data[] = $array;
@@ -340,6 +322,18 @@ class JsonDb
 	}
 
 	/**
+	 * 内部调用表切换
+	 * @access public
+	 * @param string $table_name 要切换的数据表名
+	 * @return $this
+	 */
+	private function tableSwitch($table_name)
+	{
+		$this->data_path = $this->data_folder . '/' . $table_name . ($this->options['data_type'] ? '' : '.json');
+		return $this;
+	}
+
+	/**
 	 * 添加数据表的主键
 	 * @access public
 	 * @param string|array $primary_key 要添加的主键 数组形式则批量添加
@@ -391,7 +385,7 @@ class JsonDb
 		}
 
 
-		$update = $this->table($this->optionsTableName)->where('table_name', $table_name)->update([
+		$update = $this->tableSwitch($this->optionsTableName)->where('table_name', $table_name)->update([
 			$field_name => $field_value_list
 		]);
 		if ($update) {
@@ -410,8 +404,7 @@ class JsonDb
 	{
 		$table_name = $table_name ? $table_name : $this->tableName;
 		$data_path = $this->data_path;
-		$this->data_path = "$this->data_folder/$this->optionsTableName" . ($this->options['data_type'] ? '' : '.json');
-		$find = $this->where('table_name', $table_name)->find();
+		$find = $this->tableSwitch($this->optionsTableName)->where('table_name', $table_name)->find();
 		$this->data_path = $data_path;
 		return $find;
 	}
@@ -444,11 +437,8 @@ class JsonDb
 	 */
 	private function primaryKeyExists($array, $table_name = null)
 	{
-		if (@!$this->primaryKeyMode) {
-			return;
-		}
 		$table_name = $table_name ? $table_name : $this->tableName;
-		$table_options = $this->table($this->optionsTableName)->where('table_name', $table_name)->find();
+		$table_options = $this->tableSwitch($this->optionsTableName)->where('table_name', $table_name)->find();
 		if (empty($table_options['primary_key'])) {
 			return false;
 		}
@@ -459,15 +449,16 @@ class JsonDb
 		foreach ($primary_key_list as $primary_value) {
 			foreach ($array as $key => $value) {
 				if ($key == $primary_value) {
-					$seek = $this->table($table_name)->where($key, $value)->find();
+					$seek = $this->tableSwitch($table_name)->where($key, $value)->find();
 					if ($seek) {
 						$this->DbError('当前插入数据中存在相同主键值');
 						return true;
 					}
-					return false;
 				}
 			}
 		}
+		$this->tableSwitch($this->tableName);
+		return false;
 	}
 
 	/**
@@ -628,7 +619,7 @@ class JsonDb
 	{
 		$data = $this->json_encode($array);
 		if ($table_name) {
-			$this->table($table_name);
+			$this->tableSwitch($table_name);
 		}
 		if (!file_exists($this->data_folder)) {
 			mkdir($this->data_folder, 0755, true);
