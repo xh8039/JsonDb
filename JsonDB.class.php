@@ -10,6 +10,7 @@
  */
 class JsonDb
 {
+	public $error = '暂无错误信息';
 
 	//构造函数，初始化的时候最先执行
 	public function __construct($options = [])
@@ -60,7 +61,7 @@ class JsonDb
 		// 检测表是否存在
 		if (!$this->tableExists($this->optionsTableName)) {
 			// 不存在便创建一个空表
-			$this->array_file(array());
+			$this->arrayFile(array());
 		}
 
 		// 检测是否有表名 没有则无需下面操作
@@ -76,7 +77,10 @@ class JsonDb
 
 		// 如果没有该表名的配置那么添加该表命的配置
 		if (empty($table_options)) {
-			$data = [];
+			$data = $this->jsonFile();
+			if (empty($data)) {
+				$data = [];
+			}
 			$data[] = [
 				'table_name' => $table_name,
 				'primary_key' => ['id'],
@@ -84,7 +88,7 @@ class JsonDb
 					'id' => 0
 				]
 			];
-			$this->array_file($data);
+			$this->arrayFile($data);
 		}
 
 		// 恢复以前指向的表路径
@@ -95,15 +99,17 @@ class JsonDb
 	 * 添加单条数据
 	 * @access public
 	 * @param array $array 要添加的数据
-	 * @return int|false 成功则以int形式返回添加数据的总字节 失败则返回false
+	 * @return integer|false 成功则以int形式返回添加数据的总字节 失败则返回false
 	 */
 	public function insert(array $array)
 	{
 		// 调用主键检测
-		$this->primaryKeyExists($array);
+		if ($this->primaryKeyExists($array) === true) {
+			return false;
+		}
 
 		// 获取表中原来的数据
-		$data = $this->json_file();
+		$data = $this->jsonFile();
 
 		// 如果数据为空那么将表指定为一个空数组
 		if (empty($data)) {
@@ -127,16 +133,17 @@ class JsonDb
 			// 恢复原来表的路径
 			$this->tableSwitch($this->tableName);
 		}
-
-		$data[] = $array;
-		return $this->array_file($data);
+		$num = $auto_increme_int['id'] - 1;
+		$num = "$num";
+		$data[$num] = $array;
+		return $this->arrayFile($data);
 	}
 
 	/**
 	 * 批量添加数据
 	 * @access public
 	 * @param array $array 数据集
-	 * @return integer
+	 * @return integer 返回共添加数据的条数
 	 */
 	public function insertAll(array $array)
 	{
@@ -155,11 +162,11 @@ class JsonDb
 	 * 更新数据
 	 * @access public
 	 * @param array $array 要更新的数据
-	 * @return integer
+	 * @return integer 返回更新的键值数量
 	 */
 	public function update(array $array)
 	{
-		$file = $this->json_file();
+		$file = $this->jsonFile();
 		$update = 0;
 		$where = $this->whereData;
 		foreach ($where as $key => $value) {
@@ -171,7 +178,7 @@ class JsonDb
 				}
 			}
 		}
-		$this->array_file($file);
+		$this->arrayFile($file);
 		$this->whereData = false;
 		return $update;
 	}
@@ -180,11 +187,11 @@ class JsonDb
 	 * 删除部分数据
 	 * @access public
 	 * @param array $array 要删除的部分数据字段名
-	 * @return int
+	 * @return integer  返回影响数据的键值数量
 	 */
 	public function delete(array $array)
 	{
-		$file = $this->json_file();
+		$file = $this->jsonFile();
 		$delete = 0;
 		$where = $this->whereData;
 		foreach ($where as $key => $value) {
@@ -196,7 +203,7 @@ class JsonDb
 				}
 			}
 		}
-		$this->array_file($file);
+		$this->arrayFile($file);
 		$this->whereData = false;
 		return $delete;
 	}
@@ -205,14 +212,14 @@ class JsonDb
 	 * 删除所有数据
 	 * @access public
 	 * @param bool $type 删除整个表时使用布尔值true 否则留空
-	 * @return int
+	 * @return integer 返回影响数据的条数
 	 */
 	public function deleteAll($type = false)
 	{
 		if ($type === true) {
 			return unlink($this->data_path);
 		}
-		$file = $this->json_file();
+		$file = $this->jsonFile();
 		$delete = 0;
 		$where = $this->whereData;
 		foreach ($where as $key => $value) {
@@ -222,7 +229,7 @@ class JsonDb
 				break;
 			}
 		}
-		$this->array_file(array_values($file));
+		$this->arrayFile($file);
 		$this->whereData = false;
 		return $delete;
 	}
@@ -236,10 +243,7 @@ class JsonDb
 	{
 		$where = $this->whereData;
 		$this->whereData = false;
-		foreach ($where as $key => $value) {
-			if (@!$value['id']) {
-				$where[$key]['id'] = $key;
-			}
+		foreach ($where as $value) {
 			return $value;
 		}
 		return null;
@@ -253,14 +257,8 @@ class JsonDb
 	public function select()
 	{
 		$where = $this->whereData;
-		foreach ($where as $key => $value) {
-			$select = true;
-			if (@!$value['id']) {
-				$where[$key]['id'] = $key;
-			}
-		}
 		$this->whereData = false;
-		if (!$select) {
+		if (empty($where)) {
 			return null;
 		}
 		return $where;
@@ -273,7 +271,10 @@ class JsonDb
 	 */
 	public function selectAll()
 	{
-		$data = $this->json_file('id');
+		$data = $this->jsonFile();
+		if (empty($data)) {
+			return null;
+		}
 		if (count($data) == 1) {
 			$data = $data[0];
 		}
@@ -290,13 +291,19 @@ class JsonDb
 	public function limit(int $offset, int $length = null)
 	{
 		$this->limit = $offset;
-		$file = @$this->whereData ? $this->whereData : $this->json_file();
+		$file = @$this->whereData ? $this->whereData : $this->jsonFile();;
+		if (empty($file)) {
+			return $this;
+		}
+		$file = array_values($file);
 		$data = [];
 		if (is_null($length)) {
 			$length = count($file);
+		} else {
+			$length = $offset + $length;
 		}
 		foreach ($file as $key => $value) {
-			if ($key > $offset || $key < $length) {
+			if ($key >= $offset && $key < $length) {
 				$data[$key] = $value;
 			}
 		}
@@ -451,7 +458,7 @@ class JsonDb
 				if ($key == $primary_value) {
 					$seek = $this->tableSwitch($table_name)->where($key, $value)->find();
 					if ($seek) {
-						$this->DbError('当前插入数据中存在相同主键值');
+						$this->error = '当前插入数据中存在相同主键值';
 						return true;
 					}
 				}
@@ -471,7 +478,7 @@ class JsonDb
 	 */
 	public function where($field_name, $operator = null, $field_value = null)
 	{
-		$file = @$this->whereData ? $this->whereData : $this->json_file();
+		$file = @$this->whereData ? $this->whereData : $this->jsonFile();
 		if (!is_array($file)) {
 			$this->whereData = [];
 			return $this;
@@ -542,7 +549,7 @@ class JsonDb
 	 */
 	public function whereLike($field_name, $field_value)
 	{
-		$file = @$this->whereData ? $this->whereData : $this->json_file();
+		$file = @$this->whereData ? $this->whereData : $this->jsonFile();
 		$data = [];
 		$field_value = preg_quote($field_value, '/');
 		if (preg_match('/%.*%/', $field_value) <= 0) {
@@ -584,7 +591,7 @@ class JsonDb
 	 * @param string $option 默认为空 值为id时返回包括ID的数组数据
 	 * @return array|false
 	 */
-	public function json_file($option = false)
+	public function jsonFile()
 	{
 		if (!file_exists($this->data_path)) {
 			return false;
@@ -598,13 +605,6 @@ class JsonDb
 			}
 			return false;
 		}
-		if ($option == 'id') {
-			foreach ($data as $key => $value) {
-				if (@!$value['id']) {
-					$data[$key]['id'] = $key;
-				}
-			}
-		}
 		return $data;
 	}
 
@@ -615,7 +615,7 @@ class JsonDb
 	 * @param string $table_name 自定义表名
 	 * @return int|false 成功则返回存储数据的总字节，失败则返回false
 	 */
-	private function array_file(array $array, $table_name = null)
+	private function arrayFile(array $array, $table_name = null)
 	{
 		$data = $this->json_encode($array);
 		if ($table_name) {
