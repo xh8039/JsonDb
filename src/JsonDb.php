@@ -3,11 +3,14 @@
 /**
  * JsonDb
  * @Description JSON文件数据库
- * @version 1.1.3
+ * @version 1.1
  * @author 易航
  * @blog http://blog.bri6.cn
  * @gitee https://gitee.com/yh_IT/json-db
  */
+
+namespace JsonDb\JsonDb;
+
 class JsonDb
 {
 	public $error = '暂无错误信息';
@@ -243,10 +246,10 @@ class JsonDb
 	{
 		$where = $this->whereData;
 		$this->whereData = false;
-		foreach ($where as $value) {
-			return $value;
+		if (empty($where)) {
+			return null;
 		}
-		return null;
+		return current($where);
 	}
 
 	/**
@@ -484,56 +487,58 @@ class JsonDb
 			return $this;
 		}
 		$data = [];
-		if (func_num_args() == 1) {
-			$operator = $field_name;
-			$match = preg_match_all('/`field_([\w,\d]+)`/s', $operator, $match_array);
-			if (!$match) {
-				$this->DbError('判断条件无效 请检查是否存在伪字段名：`field_字段名');
-				return;
-			}
-			foreach ($match_array[1] as $key => $value) {
-				$match_array[1][$key] = '$value[\'' . $value . '\']';
-			}
-			$str = str_replace($match_array[0], $match_array[1], $operator);
-			$str = str_replace('`', '\'', $str);
-			$str = 'return(' . $str . ');';
-			foreach ($file as $key => $value) {
-				if (@!$value['id']) {
-					$value['id'] = $key;
-				}
-				$result = @eval($str);
-				if ($result) {
-					$data[$key] = $file[$key];
-				}
-			}
+		if (!is_array($field_name)) {
+			$field = [];
+			$field[] = [$field_name, $operator, $field_value];
 		}
-		if (func_num_args() == 2) {
-			if (is_null($field_value)) {
+		foreach ($field as $field_key => $field_val) {
+			$field_name = $field_val[0];
+			$operator = (@isset($field_val[1]) ? $field_val[1] : null);
+			$field_value = (@isset($field_val[2]) ? $field_val[2] : null);
+			if (isset($field_name) && is_null($operator) && is_null($field_value)) {
+				$operator = $field_name;
+				$match = preg_match_all('/`field_([\w,\d]+)`/s', $operator, $match_array);
+				if (!$match) {
+					$this->error = '判断条件无效 请检查是否存在伪字段名：`field_字段名';
+					return $this;
+				}
+				foreach ($match_array[1] as $key => $value) {
+					$match_array[1][$key] = '$value[\'' . $value . '\']';
+				}
+				$str = str_replace($match_array[0], $match_array[1], $operator);
+				$str = str_replace('`', '\'', $str);
+				$str = 'return(' . $str . ');';
+				foreach ($file as $key => $value) {
+					$result = @eval($str);
+					if ($result) {
+						$data[$key] = $file[$key];
+					}
+				}
+				continue;
+			}
+			if (isset($field_name) && isset($operator) && is_null($field_value)) {
 				$field_value  = $operator;
+				foreach ($file as $key => $value) {
+					if (@$value[$field_name] == $field_value) {
+						$data[$key] = $file[$key];
+					}
+				}
+				continue;
 			}
-			foreach ($file as $key => $value) {
-				if (@!$value['id']) {
-					$value['id'] = $key;
+			if (isset($field_name) && isset($operator) && isset($field_value)) {
+				if (strtolower($operator) == 'like') {
+					return $this->whereLike($field_name, $field_value);
+				} else {
+					$operator == '=' ? $operator = '==' : $operator = $operator;
+					foreach ($file as $key => $value) {
+						$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
+						$result = @eval($str);
+						if ($result) {
+							$data[$key] = $file[$key];
+						}
+					}
 				}
-				if (@$value[$field_name] == $field_value) {
-					$data[$key] = $file[$key];
-				}
-			}
-		}
-		if (func_num_args() == 3) {
-			if (strtolower($operator) == 'like') {
-				$this->whereLike($field_name, $field_value);
-			}
-			$operator == '=' ? $operator = '==' : $operator = $operator;
-			foreach ($file as $key => $value) {
-				if (@!$value['id']) {
-					$value['id'] = $key;
-				}
-				$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
-				$result = @eval($str);
-				if ($result) {
-					$data[$key] = $file[$key];
-				}
+				continue;
 			}
 		}
 		$this->whereData = $data;
@@ -543,8 +548,8 @@ class JsonDb
 	/**
 	 * LIKE查询
 	 * @access public
-	 * @param string $field 字段名
-	 * @param mixed $value 数据
+	 * @param string $field_name 字段名
+	 * @param mixed $field_value 字段值
 	 * @return $this
 	 */
 	public function whereLike($field_name, $field_value)
@@ -571,6 +576,25 @@ class JsonDb
 			}
 		}
 		$this->whereData = $data;
+		return $this;
+	}
+
+	/**
+	 * ORDER排序
+	 * @access public
+	 * @param string $field_name 字段名
+	 * @param SORT_ASC|SORT_DESC $order 排序方式：SORT_ASC - 按升序排列|SORT_DESC - 按降序排列
+	 * @return $this
+	 */
+	public function order($field_name, $order)
+	{
+		if (is_array(@$this->whereData)) {
+			$file = $this->whereData;
+		} else {
+			$this->jsonFile();
+		}
+		array_multisort(array_column($file, $field_name), $order, $file);
+		$this->whereData = $file;
 		return $this;
 	}
 
