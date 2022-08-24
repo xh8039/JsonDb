@@ -10,6 +10,11 @@ JsonDb 是一个由原生PHP实现的文件数据库，JsonDb只有一个文件�
 
 ## 使用说明
 
+### 使用 composer
+```shell
+composer require jsondb/jsondb
+```
+或者
 ### clone 项目到本地
 - github地址
 ```shell
