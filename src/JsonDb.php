@@ -13,7 +13,23 @@ namespace JsonDb\JsonDb;
 
 class JsonDb
 {
-	public $error = '暂无错误信息';
+	/** 错误信息 */
+	public $error;
+
+	/** JSON数据存储文件夹基于的根目录 */
+	public $dataRoot;
+
+	/** JSON数据存储文件夹的根目录 */
+	public $tableRoot;
+
+	/** JSON数据表的文件路径 */
+	public $tableFile;
+
+	/** 筛选后的结果 */
+	public $filterResult;
+
+	/** JsonDb配置文件名称 */
+	public $optionsTableName;
 
 	//构造函数，初始化的时候最先执行
 	public function __construct($options = [])
@@ -33,13 +49,13 @@ class JsonDb
 
 		// 检测站点根目录
 		if (@$_SERVER['DOCUMENT_ROOT']) {
-			$this->DOCUMENT_ROOT = $_SERVER['DOCUMENT_ROOT'] . '/';
+			$this->dataRoot = $_SERVER['DOCUMENT_ROOT'] . '/';
 		} else {
-			$this->DOCUMENT_ROOT = './';
+			$this->dataRoot = './';
 		}
 
 		// 数据存储的目录
-		$this->data_folder = $this->DOCUMENT_ROOT . $options['path'] . 'json_data'; //存储的目录
+		$this->tableRoot = $this->dataRoot . $options['path'] . 'json_data'; //存储的目录
 
 		// 调试模式
 		if (@$options['debug'] !== true) {
@@ -75,7 +91,7 @@ class JsonDb
 		// 获取要添加配置文件的表的名字
 		$table_name = $this->tableName ? $this->tableName : $this->options['table_name'];
 
-		// 因为已经指向 data_path 直接查询配置文件即可
+		// 因为已经指向 tableFile 直接查询配置文件即可
 		$table_options = $this->where('table_name', $table_name)->find();
 
 		// 如果没有该表名的配置那么添加该表命的配置
@@ -171,7 +187,7 @@ class JsonDb
 	{
 		$file = $this->jsonFile();
 		$update = 0;
-		$where = $this->whereData;
+		$where = $this->filterResult;
 		foreach ($where as $key => $value) {
 			foreach ($array as $array_key => $array_value) {
 				$update++;
@@ -182,7 +198,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->whereData = false;
+		$this->filterResult = false;
 		return $update;
 	}
 
@@ -196,7 +212,7 @@ class JsonDb
 	{
 		$file = $this->jsonFile();
 		$delete = 0;
-		$where = $this->whereData;
+		$where = $this->filterResult;
 		foreach ($where as $key => $value) {
 			foreach ($array as $array_value) {
 				$delete++;
@@ -207,7 +223,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->whereData = false;
+		$this->filterResult = false;
 		return $delete;
 	}
 
@@ -220,11 +236,11 @@ class JsonDb
 	public function deleteAll($type = false)
 	{
 		if ($type === true) {
-			return unlink($this->data_path);
+			return unlink($this->tableFile);
 		}
 		$file = $this->jsonFile();
 		$delete = 0;
-		$where = $this->whereData;
+		$where = $this->filterResult;
 		foreach ($where as $key => $value) {
 			$delete++;
 			unset($file[$key]);
@@ -233,7 +249,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->whereData = false;
+		$this->filterResult = false;
 		return $delete;
 	}
 
@@ -244,8 +260,8 @@ class JsonDb
 	 */
 	public function find()
 	{
-		$where = $this->whereData;
-		$this->whereData = false;
+		$where = $this->filterResult;
+		$this->filterResult = false;
 		if (empty($where)) {
 			return null;
 		}
@@ -259,8 +275,8 @@ class JsonDb
 	 */
 	public function select()
 	{
-		$where = $this->whereData;
-		$this->whereData = false;
+		$where = $this->filterResult;
+		$this->filterResult = false;
 		if (empty($where)) {
 			return null;
 		}
@@ -294,7 +310,7 @@ class JsonDb
 	public function limit(int $offset, int $length = null)
 	{
 		$this->limit = $offset;
-		$file = @$this->whereData ? $this->whereData : $this->jsonFile();;
+		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();;
 		if (empty($file)) {
 			return $this;
 		}
@@ -310,7 +326,7 @@ class JsonDb
 				$data[$key] = $value;
 			}
 		}
-		$this->whereData = $data;
+		$this->filterResult = $data;
 		return $this;
 	}
 
@@ -322,7 +338,7 @@ class JsonDb
 	 */
 	public function table($table_name)
 	{
-		$this->data_path = "$this->data_folder/$table_name" . ($this->options['data_type'] ? '' : '.json');
+		$this->tableFile = "$this->tableRoot/$table_name" . ($this->options['data_type'] ? '' : '.json');
 		$this->tableName = $table_name;
 		$this->initialize();
 		if (@!$this->limit) {
@@ -339,7 +355,7 @@ class JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
-		$this->data_path = $this->data_folder . '/' . $table_name . ($this->options['data_type'] ? '' : '.json');
+		$this->tableFile = $this->tableRoot . '/' . $table_name . ($this->options['data_type'] ? '' : '.json');
 		return $this;
 	}
 
@@ -413,9 +429,9 @@ class JsonDb
 	public function tableOptions($table_name = null)
 	{
 		$table_name = $table_name ? $table_name : $this->tableName;
-		$data_path = $this->data_path;
+		$tableFile = $this->tableFile;
 		$find = $this->tableSwitch($this->optionsTableName)->where('table_name', $table_name)->find();
-		$this->data_path = $data_path;
+		$this->tableFile = $tableFile;
 		return $find;
 	}
 
@@ -428,11 +444,11 @@ class JsonDb
 	public function tableExists($table_name = null)
 	{
 		if ($table_name) {
-			$data_path = "$this->data_folder/$table_name" . ($this->options['data_type'] ? '' : '.json');
+			$tableFile = "$this->tableRoot/$table_name" . ($this->options['data_type'] ? '' : '.json');
 		} else {
-			$data_path = $this->data_path;
+			$tableFile = $this->tableFile;
 		}
-		if (file_exists($data_path)) {
+		if (file_exists($tableFile)) {
 			return true;
 		}
 		return false;
@@ -481,9 +497,9 @@ class JsonDb
 	 */
 	public function where($field_name, $operator = null, $field_value = null)
 	{
-		$file = @$this->whereData ? $this->whereData : $this->jsonFile();
+		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
 		if (!is_array($file)) {
-			$this->whereData = [];
+			$this->filterResult = [];
 			return $this;
 		}
 		$data = [];
@@ -509,7 +525,7 @@ class JsonDb
 				$str = str_replace('`', '\'', $str);
 				$str = 'return(' . $str . ');';
 				foreach ($file as $key => $value) {
-					$result = @eval($str);
+					$result = eval($str);
 					if ($result) {
 						$data[$key] = $file[$key];
 					}
@@ -532,7 +548,7 @@ class JsonDb
 					$operator == '=' ? $operator = '==' : $operator = $operator;
 					foreach ($file as $key => $value) {
 						$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
-						$result = @eval($str);
+						$result = eval($str);
 						if ($result) {
 							$data[$key] = $file[$key];
 						}
@@ -541,7 +557,7 @@ class JsonDb
 				continue;
 			}
 		}
-		$this->whereData = $data;
+		$this->filterResult = $data;
 		return $this;
 	}
 
@@ -554,7 +570,7 @@ class JsonDb
 	 */
 	public function whereLike($field_name, $field_value)
 	{
-		$file = @$this->whereData ? $this->whereData : $this->jsonFile();
+		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
 		$data = [];
 		$field_value = preg_quote($field_value, '/');
 		if (preg_match('/%.*%/', $field_value) <= 0) {
@@ -568,14 +584,11 @@ class JsonDb
 		$field_value = str_replace('%', '.*', $field_value);
 		$field_value = '/' . $field_value . '/s';
 		foreach ($file as $key => $value) {
-			if (@!$value['id']) {
-				$value['id'] = $key;
-			}
 			if (preg_match($field_value, @$value[$field_name]) > 0) {
 				$data[$key] = $file[$key];
 			}
 		}
-		$this->whereData = $data;
+		$this->filterResult = $data;
 		return $this;
 	}
 
@@ -588,13 +601,13 @@ class JsonDb
 	 */
 	public function order($field_name, $order)
 	{
-		if (is_array(@$this->whereData)) {
-			$file = $this->whereData;
+		if (is_array($this->filterResult)) {
+			$file = $this->filterResult;
 		} else {
 			$this->jsonFile();
 		}
 		array_multisort(array_column($file, $field_name), $order, $file);
-		$this->whereData = $file;
+		$this->filterResult = $file;
 		return $this;
 	}
 
@@ -604,7 +617,7 @@ class JsonDb
 	 * @param array $array 要转换的数组
 	 * @return json|string
 	 */
-	public function json_encode($array)
+	public function jsonEncode($array)
 	{
 		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
 	}
@@ -617,10 +630,10 @@ class JsonDb
 	 */
 	public function jsonFile()
 	{
-		if (!file_exists($this->data_path)) {
+		if (!file_exists($this->tableFile)) {
 			return false;
 		}
-		$data = file_get_contents($this->data_path);
+		$data = file_get_contents($this->tableFile);
 		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
 		if (!is_array($data)) {
 			if ($this->options['debug']) {
@@ -634,26 +647,26 @@ class JsonDb
 
 	/**
 	 * 将数组数据存储到JSON数据表中
-	 * @access public
+	 * @access private
 	 * @param array $array 要存储的数组数据
 	 * @param string $table_name 自定义表名
 	 * @return int|false 成功则返回存储数据的总字节，失败则返回false
 	 */
 	private function arrayFile(array $array, $table_name = null)
 	{
-		$data = $this->json_encode($array);
+		$data = $this->jsonEncode($array);
 		if ($table_name) {
 			$this->tableSwitch($table_name);
 		}
-		if (!file_exists($this->data_folder)) {
-			mkdir($this->data_folder, 0755, true);
+		if (!file_exists($this->tableRoot)) {
+			mkdir($this->tableRoot, 0755, true);
 		}
-		return file_put_contents($this->data_path, ($this->options['data_type'] ? gzcompress($data) : $data));
+		return file_put_contents($this->tableFile, ($this->options['data_type'] ? gzcompress($data) : $data));
 	}
 
 	/**
 	 * 输出一个错误信息
-	 * @access public
+	 * @access private
 	 * @param string $msg 错误信息
 	 */
 	private function DbError($msg)

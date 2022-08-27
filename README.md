@@ -27,7 +27,9 @@ git clone https://gitee.com/yh_IT/json-db.git
 
 ### 初始化
 ```php
-include('./JsonDb.class.php');
+require 'vendor/autoload.php';
+
+use JsonDb\JsonDb\JsonDb;
 
 // 自定义配置项 具体配置请参考文档：https://gitee.com/yh_IT/json-db/wikis
 $optisons = [
