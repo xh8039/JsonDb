@@ -36,8 +36,8 @@ class JsonDb
 	{
 
 		// 数据压缩模式
-		if (@$options['data_type'] !== false) {
-			$options['data_type'] = true;
+		if (@$options['compress_mode'] !== false) {
+			$options['compress_mode'] = true;
 		}
 
 		// 自定义存储路径
@@ -338,7 +338,7 @@ class JsonDb
 	 */
 	public function table($table_name)
 	{
-		$this->tableFile = "$this->tableRoot/$table_name" . ($this->options['data_type'] ? '' : '.json');
+		$this->tableFile = "$this->tableRoot/$table_name" . ($this->options['compress_mode'] ? '' : '.json');
 		$this->tableName = $table_name;
 		$this->initialize();
 		if (@!$this->limit) {
@@ -355,7 +355,7 @@ class JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
-		$this->tableFile = $this->tableRoot . '/' . $table_name . ($this->options['data_type'] ? '' : '.json');
+		$this->tableFile = $this->tableRoot . '/' . $table_name . ($this->options['compress_mode'] ? '' : '.json');
 		return $this;
 	}
 
@@ -444,7 +444,7 @@ class JsonDb
 	public function tableExists($table_name = null)
 	{
 		if ($table_name) {
-			$tableFile = "$this->tableRoot/$table_name" . ($this->options['data_type'] ? '' : '.json');
+			$tableFile = "$this->tableRoot/$table_name" . ($this->options['compress_mode'] ? '' : '.json');
 		} else {
 			$tableFile = $this->tableFile;
 		}
@@ -619,7 +619,7 @@ class JsonDb
 	 */
 	public function jsonEncode($array)
 	{
-		return json_encode($array, ($this->options['data_type'] ? 256  : 128 | 256));
+		return json_encode($array, ($this->options['compress_mode'] ? 256  : 128 | 256));
 	}
 
 	/**
@@ -634,7 +634,7 @@ class JsonDb
 			return false;
 		}
 		$data = file_get_contents($this->tableFile);
-		$data = json_decode(($this->options['data_type'] ? gzuncompress($data) : $data), true);
+		$data = json_decode(($this->options['compress_mode'] ? gzuncompress($data) : $data), true);
 		if (!is_array($data)) {
 			if ($this->options['debug']) {
 				$this->DbError('文件格式错误！');
@@ -661,7 +661,7 @@ class JsonDb
 		if (!file_exists($this->tableRoot)) {
 			mkdir($this->tableRoot, 0755, true);
 		}
-		return file_put_contents($this->tableFile, ($this->options['data_type'] ? gzcompress($data) : $data));
+		return file_put_contents($this->tableFile, ($this->options['compress_mode'] ? gzcompress($data) : $data));
 	}
 
 	/**
