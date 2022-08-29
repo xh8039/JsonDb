@@ -35,9 +35,29 @@ class JsonDb
 	public function __construct($options = [])
 	{
 
-		// 数据压缩模式
-		if (@$options['compress_mode'] !== false) {
-			$options['compress_mode'] = true;
+		// 检测是否开启数据压缩模式
+		if (@$options['compress_mode'] === false) {
+			$options['compress_mode'] = '';
+			$options['decompress_mode'] = '';
+			$options['file_suffix'] = 'json';
+		} else if (empty($options['compress_mode'])) {
+			// 没有使用此参数配置那么默认使用'gzcompress'压缩
+			$options['compress_mode'] = 'gzcompress';
+		}
+
+		$compress_function = [
+			['gzcompress', 'gzuncompress', '.zlib'],
+			['gzencode', 'gzdecode', '.gzip'],
+			['gzdeflate', 'gzinflate', '.deflate'],
+			['bzcompress', 'bzdecompress', 'bzip2']
+		];
+
+		// 寻找是否使用上方数组中的函数 如果有使用就自动配置解压函数和文件后缀名
+		foreach ($compress_function as $value) {
+			if ($options['compress_mode'] == $value[0]) {
+				$options['decompress_mode'] = $value[1];
+				$options['file_suffix'] = $value[2];
+			}
 		}
 
 		// 自定义存储路径
@@ -338,7 +358,7 @@ class JsonDb
 	 */
 	public function table($table_name)
 	{
-		$this->tableFile = "$this->tableRoot/$table_name" . ($this->options['compress_mode'] ? '' : '.json');
+		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		$this->tableName = $table_name;
 		$this->initialize();
 		if (@!$this->limit) {
@@ -355,7 +375,7 @@ class JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
-		$this->tableFile = $this->tableRoot . '/' . $table_name . ($this->options['compress_mode'] ? '' : '.json');
+		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		return $this;
 	}
 
@@ -444,7 +464,7 @@ class JsonDb
 	public function tableExists($table_name = null)
 	{
 		if ($table_name) {
-			$tableFile = "$this->tableRoot/$table_name" . ($this->options['compress_mode'] ? '' : '.json');
+			$tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		} else {
 			$tableFile = $this->tableFile;
 		}
@@ -619,7 +639,7 @@ class JsonDb
 	 */
 	public function jsonEncode($array)
 	{
-		return json_encode($array, ($this->options['compress_mode'] ? 256  : 128 | 256));
+		return json_encode($array, ((empty($this->options['compress_mode'])) ? (128 | 256) : (256)));
 	}
 
 	/**
@@ -634,7 +654,8 @@ class JsonDb
 			return false;
 		}
 		$data = file_get_contents($this->tableFile);
-		$data = json_decode(($this->options['compress_mode'] ? gzuncompress($data) : $data), true);
+		$data = $this->options['decompress_mode']($data);
+		$data = json_decode($data, true);
 		if (!is_array($data)) {
 			if ($this->options['debug']) {
 				$this->DbError('文件格式错误！');
@@ -661,7 +682,8 @@ class JsonDb
 		if (!file_exists($this->tableRoot)) {
 			mkdir($this->tableRoot, 0755, true);
 		}
-		return file_put_contents($this->tableFile, ($this->options['compress_mode'] ? gzcompress($data) : $data));
+		$data = $this->options['compress_mode']($data);
+		return file_put_contents($this->tableFile, $data);
 	}
 
 	/**
