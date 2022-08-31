@@ -13,6 +13,10 @@ namespace JsonDb\JsonDb;
 
 class JsonDb
 {
+	
+	/** 自定义配置项 */
+	public $options;
+
 	/** 错误信息 */
 	public $error;
 
@@ -37,9 +41,9 @@ class JsonDb
 
 		// 检测是否开启数据压缩模式
 		if (@$options['compress_mode'] === false) {
-			$options['compress_mode'] = '';
-			$options['decompress_mode'] = '';
-			$options['file_suffix'] = 'json';
+			$options['compress_mode'] = null;
+			$options['decompress_mode'] = null;
+			$options['file_suffix'] = '.json';
 		} else if (empty($options['compress_mode'])) {
 			// 没有使用此参数配置那么默认使用'gzcompress'压缩
 			$options['compress_mode'] = 'gzcompress';
@@ -654,7 +658,7 @@ class JsonDb
 			return false;
 		}
 		$data = file_get_contents($this->tableFile);
-		$data = $this->options['decompress_mode']($data);
+		$data = $this->options['decompress_mode'] ? $this->options['decompress_mode']($data) : $data;
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
 			if ($this->options['debug']) {
@@ -682,7 +686,7 @@ class JsonDb
 		if (!file_exists($this->tableRoot)) {
 			mkdir($this->tableRoot, 0755, true);
 		}
-		$data = $this->options['compress_mode']($data);
+		$data = $this->options['compress_mode'] ? $this->options['compress_mode']($data) : $data;
 		return file_put_contents($this->tableFile, $data);
 	}
 
