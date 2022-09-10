@@ -3,7 +3,7 @@
 /**
  * JsonDb
  * @Description JSON文件数据库
- * @version 1.1
+ * @version 2.0
  * @author 易航
  * @blog http://blog.bri6.cn
  * @gitee https://gitee.com/yh_IT/json-db
