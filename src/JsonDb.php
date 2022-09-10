@@ -13,7 +13,7 @@ namespace JsonDb\JsonDb;
 
 class JsonDb
 {
-	
+
 	/** 自定义配置项 */
 	public $options;
 
