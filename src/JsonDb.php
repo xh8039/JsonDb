@@ -617,6 +617,36 @@ class JsonDb
 	}
 
 	/**
+	 * 查询指定键名之前的数据
+	 * @access public
+	 * @param string $field_name 字段名
+	 * @return $this
+	 */
+	public function beforeKey($field_name)
+	{
+		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$keys = array_keys($file);
+		$len = array_search($field_name, $keys);
+		$this->filterResult = array_slice($file, 0, $len);
+		return $this;
+	}
+
+	/**
+	 * 查询指定键名之后的数据
+	 * @access public
+	 * @param string $field_name 字段名
+	 * @return $this
+	 */
+	public function afterKey($field_name)
+	{
+		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$keys = array_keys($file);
+		$offset = array_search($field_name, $keys);
+		$this->filterResult = array_slice($file, $offset + 1);
+		return $this;
+	}
+
+	/**
 	 * ORDER排序
 	 * @access public
 	 * @param string $field_name 字段名
