@@ -1,13 +1,12 @@
 <?php
 
 /**
- * JsonDb
- * @Description JSON文件数据库
+ * @package JsonDb
+ * @author  易航
  * @version 2.0
- * @author 易航
- * @blog http://blog.bri6.cn
- * @gitee https://gitee.com/yh_IT/json-db
- */
+ * @link    https://gitee.com/yh_IT/json-db
+ *
+**/
 
 namespace JsonDb\JsonDb;
 
