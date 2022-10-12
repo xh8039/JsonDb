@@ -78,7 +78,7 @@ class JsonDb
 		}
 
 		// 数据存储的目录
-		$this->tableRoot = $this->dataRoot . $options['path'] . 'json_data'; //存储的目录
+		$this->tableRoot = $this->dataRoot . $options['path'] . 'JsonDb'; //存储的目录
 
 		// 调试模式
 		if (@$options['debug'] !== true) {
