@@ -26,12 +26,9 @@ require 'vendor/autoload.php';
 
 use JsonDb\JsonDb\JsonDb;
 
+// 默认关闭数据压缩、加密并开启调试模式，可使用自定义配置
 // 自定义配置项 具体配置请参考文档：https://gitee.com/yh_IT/json-db/wikis
-$optisons = [
-	'compress_mode' => false, //关闭数据压缩 方便调试
-];
-
-$DB = new JsonDb($optisons);
+$DB = new JsonDb;
 ```
 
 ### 插入单条数据 `insert`
