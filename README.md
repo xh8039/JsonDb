@@ -22,6 +22,7 @@ git clone https://gitee.com/yh_IT/json-db.git
 
 ### 初始化
 ```php
+// composer自动加载
 require 'vendor/autoload.php';
 
 use JsonDb\JsonDb\JsonDb;
