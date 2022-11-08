@@ -199,6 +199,9 @@ class JsonDb
 	{
 		$file = $this->jsonFile();
 		$update = 0;
+		if (empty($this->filterResult)) {
+			return 0;
+		}
 		$where = $this->filterResult;
 		foreach ($where as $key => $value) {
 			foreach ($array as $array_key => $array_value) {
@@ -292,7 +295,7 @@ class JsonDb
 		if (empty($where)) {
 			return null;
 		}
-		return $where;
+		return array_values($where);
 	}
 
 	/**
@@ -304,12 +307,29 @@ class JsonDb
 	{
 		$data = $this->jsonFile();
 		if (empty($data)) {
-			return null;
+			return [];
 		}
 		if (count($data) == 1) {
 			$data = $data[0];
+			return $data;
 		}
-		return $data;
+		return array_values($data);
+	}
+
+	/**
+	 * 查询所有数据
+	 * @access public
+	 * @return integer
+	 */
+	public function count()
+	{
+		$where = $this->filterResult;
+		$this->filterResult = false;
+		$data = $where ? $where : $this->jsonFile();
+		if (empty($data)) {
+			return 0;
+		}
+		return count($data);
 	}
 
 	/**
@@ -324,6 +344,7 @@ class JsonDb
 		$this->limit = $offset;
 		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();;
 		if (empty($file)) {
+			$this->DbError('limit语句查找不到数据');
 			return $this;
 		}
 		$file = array_values($file);
@@ -515,10 +536,21 @@ class JsonDb
 			return $this;
 		}
 		$data = [];
+
+		// 第一个值不是数组的情况
 		if (!is_array($field_name)) {
 			$field = [];
 			$field[] = [$field_name, $operator, $field_value];
 		}
+
+		// 最后一个值不为并且数组内不是数组的情况
+		if (is_array($field_name) && !is_array(end($field_name))) {
+			$field = [];
+			foreach ($field_name as $key => $value) {
+				$field[] = [$key, $value];
+			}
+		}
+
 		foreach ($field as $field_key => $field_val) {
 			$field_name = $field_val[0];
 			$operator = (@isset($field_val[1]) ? $field_val[1] : null);
@@ -540,6 +572,8 @@ class JsonDb
 					$result = eval($str);
 					if ($result) {
 						$data[$key] = $file[$key];
+					}else {
+						$data = [];
 					}
 				}
 				continue;
@@ -549,6 +583,8 @@ class JsonDb
 				foreach ($file as $key => $value) {
 					if (@$value[$field_name] == $field_value) {
 						$data[$key] = $file[$key];
+					}else {
+						$data = [];
 					}
 				}
 				continue;
@@ -563,13 +599,15 @@ class JsonDb
 						$result = eval($str);
 						if ($result) {
 							$data[$key] = $file[$key];
+						}else {
+							$data = [];
 						}
 					}
 				}
 				continue;
 			}
+			$this->filterResult = $data;
 		}
-		$this->filterResult = $data;
 		return $this;
 	}
 
@@ -598,6 +636,8 @@ class JsonDb
 		foreach ($file as $key => $value) {
 			if (preg_match($field_value, @$value[$field_name]) > 0) {
 				$data[$key] = $file[$key];
+			}else {
+				$data = [];
 			}
 		}
 		$this->filterResult = $data;
