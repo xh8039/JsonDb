@@ -3,7 +3,7 @@
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.1
+ * @version 2.2
  * @link    https://gitee.com/yh_IT/json-db
  *
  **/
@@ -606,8 +606,8 @@ class JsonDb
 				}
 				continue;
 			}
-			$this->filterResult = $data;
 		}
+		$this->filterResult = $data;
 		return $this;
 	}
 
