@@ -180,10 +180,10 @@ class JsonDb
 	{
 		$insertAll = 0;
 		foreach ($array as $value) {
-			if ($insertAll == $this->limit) {
+			$insertAll++;
+			if ($insertAll === $this->limit) {
 				break;
 			}
-			$insertAll++;
 			$this->insert($value);
 		}
 		return $insertAll;
@@ -243,7 +243,7 @@ class JsonDb
 	}
 
 	/**
-	 * 删除所有数据
+	 * 删除指定字段所有数据
 	 * @access public
 	 * @param bool $type 删除整个表时使用布尔值true 否则留空
 	 * @return integer 返回影响数据的条数
@@ -278,7 +278,7 @@ class JsonDb
 		$where = $this->filterResult;
 		$this->filterResult = false;
 		if (empty($where)) {
-			return null;
+			return [];
 		}
 		return current($where);
 	}
@@ -293,7 +293,7 @@ class JsonDb
 		$where = $this->filterResult;
 		$this->filterResult = false;
 		if (empty($where)) {
-			return null;
+			return [];
 		}
 		return array_values($where);
 	}
@@ -361,6 +361,58 @@ class JsonDb
 		}
 		$this->filterResult = $data;
 		return $this;
+	}
+
+	/**
+	 * 备份JsonDb的数据
+	 * @access public
+	 * @param string $path 备份路径
+	 * @return array
+	 */
+	public function backup($path)
+	{
+		$backup_path = $path . '/JsonDb-' . date('Y-m-d H:i:s') . '/';
+		$path = $this->tableRoot . '/';
+		return $this->copyDir($path, $backup_path);
+	}
+
+	/**
+	 * @access public
+	 * @return array
+	 */
+	private function copyDir($path, $delPath)
+	{
+		//扫描文件
+		$files = scandir($path);
+		if (is_array($files)) {
+			foreach ($files as $file) {
+				if (is_file($path . $file)) {
+					$fileName = basename($file);
+					$fileNameOrigin = $path . $fileName;
+					if (!file_exists($delPath)) {
+						mkdir($delPath, 0777, true);
+					}
+					$fileNameOriginDel = $delPath . $fileName;
+					copy($fileNameOrigin, $fileNameOriginDel);
+				}
+			}
+		}
+		return [
+			'old' => $path,
+			'new' => $delPath
+		];
+	}
+
+	/**
+	 * 恢复JsonDb备份的数据，会覆盖原来数据
+	 * @access public
+	 * @param string $dir 数据目录
+	 * @return array
+	 */
+	public function recover($dir)
+	{
+		$path = $this->tableRoot . '/';
+		return $this->copyDir($dir, $path);
 	}
 
 	/**
@@ -572,8 +624,8 @@ class JsonDb
 					$result = eval($str);
 					if ($result) {
 						$data[$key] = $file[$key];
-					}else {
-						$data = [];
+					} else {
+						unset($data[$key]);
 					}
 				}
 				continue;
@@ -583,8 +635,8 @@ class JsonDb
 				foreach ($file as $key => $value) {
 					if (@$value[$field_name] == $field_value) {
 						$data[$key] = $file[$key];
-					}else {
-						$data = [];
+					} else {
+						unset($data[$key]);
 					}
 				}
 				continue;
@@ -599,8 +651,8 @@ class JsonDb
 						$result = eval($str);
 						if ($result) {
 							$data[$key] = $file[$key];
-						}else {
-							$data = [];
+						} else {
+							unset($data[$key]);
 						}
 					}
 				}
@@ -636,7 +688,7 @@ class JsonDb
 		foreach ($file as $key => $value) {
 			if (preg_match($field_value, @$value[$field_name]) > 0) {
 				$data[$key] = $file[$key];
-			}else {
+			} else {
 				$data = [];
 			}
 		}
@@ -681,14 +733,20 @@ class JsonDb
 	 * @param SORT_ASC|SORT_DESC $order 排序方式：SORT_ASC - 按升序排列|SORT_DESC - 按降序排列
 	 * @return $this
 	 */
-	public function order($field_name, $order)
+	public function order($field_name, $order = SORT_DESC)
 	{
 		if (is_array($this->filterResult)) {
 			$file = $this->filterResult;
 		} else {
 			$this->jsonFile();
 		}
-		array_multisort(array_column($file, $field_name), $order, $file);
+		foreach ($file as $key => $value) {
+			if (!isset($value[$field_name])) {
+				$file[$key][$field_name] = ($order == SORT_DESC ? 0 : 99999999);
+			}
+		}
+		$column = array_column($file, $field_name);
+		array_multisort($column, $order, $file);
 		$this->filterResult = $file;
 		return $this;
 	}
