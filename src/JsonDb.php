@@ -735,10 +735,10 @@ class JsonDb
 	 */
 	public function order($field_name, $order = SORT_DESC)
 	{
-		if (is_array($this->filterResult)) {
-			$file = $this->filterResult;
+		if (empty($this->filterResult)) {
+			$file = $this->jsonFile();
 		} else {
-			$this->jsonFile();
+			$file = $this->filterResult;
 		}
 		foreach ($file as $key => $value) {
 			if (!isset($value[$field_name])) {
