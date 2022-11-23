@@ -588,78 +588,71 @@ class JsonDb
 			return $this;
 		}
 		$data = [];
-
-		// 第一个值不是数组的情况
-		if (!is_array($field_name)) {
-			$field = [];
-			$field[] = [$field_name, $operator, $field_value];
-		}
-
-		// 最后一个值不为并且数组内不是数组的情况
-		if (is_array($field_name) && !is_array(end($field_name))) {
-			$field = [];
-			foreach ($field_name as $key => $value) {
-				$field[] = [$key, $value];
+		$param = func_num_args();
+		if ($param == 1) {
+			$match = preg_match_all('/`field_([\w,\d]+)`/s', $field_name, $match_array);
+			if (!$match) {
+				$this->DbError('判断条件无效 请检查是否存在伪字段名：`field_字段名`');
+				return $this;
 			}
-		}
-
-		foreach ($field as $field_key => $field_val) {
-			$field_name = $field_val[0];
-			$operator = (@isset($field_val[1]) ? $field_val[1] : null);
-			$field_value = (@isset($field_val[2]) ? $field_val[2] : null);
-			if (isset($field_name) && is_null($operator) && is_null($field_value)) {
-				$operator = $field_name;
-				$match = preg_match_all('/`field_([\w,\d]+)`/s', $operator, $match_array);
-				if (!$match) {
-					$this->DbError('判断条件无效 请检查是否存在伪字段名：`field_字段名`');
-					return $this;
-				}
-				foreach ($match_array[1] as $key => $value) {
-					$match_array[1][$key] = '$value[\'' . $value . '\']';
-				}
-				$str = str_replace($match_array[0], $match_array[1], $operator);
-				$str = str_replace('`', '\'', $str);
-				$str = 'return(' . $str . ');';
-				foreach ($file as $key => $value) {
-					$result = eval($str);
-					if ($result) {
-						$data[$key] = $file[$key];
-					} else {
-						unset($data[$key]);
-					}
-				}
-				continue;
+			foreach ($match_array[1] as $key => $value) {
+				$match_array[1][$key] = '$value[\'' . $value . '\']';
 			}
-			if (isset($field_name) && isset($operator) && is_null($field_value)) {
-				$field_value  = $operator;
-				foreach ($file as $key => $value) {
-					if (@$value[$field_name] == $field_value) {
-						$data[$key] = $file[$key];
-					} else {
-						unset($data[$key]);
-					}
-				}
-				continue;
-			}
-			if (isset($field_name) && isset($operator) && isset($field_value)) {
-				if (strtolower($operator) == 'like') {
-					return $this->whereLike($field_name, $field_value);
+			$str = str_replace($match_array[0], $match_array[1], $field_name);
+			$str = str_replace('`', '\'', $str);
+			$str = 'return(' . $str . ');';
+			foreach ($file as $key => $value) {
+				$result = eval($str);
+				if ($result) {
+					$data[$key] = $file[$key];
 				} else {
-					$operator == '=' ? $operator = '==' : $operator = $operator;
-					foreach ($file as $key => $value) {
-						$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
-						$result = eval($str);
-						if ($result) {
-							$data[$key] = $file[$key];
-						} else {
-							unset($data[$key]);
-						}
-					}
+					unset($data[$key]);
 				}
-				continue;
+			}
+		}
+		if ($param == 2) {
+			$field_value  = $operator;
+			foreach ($file as $key => $value) {
+				if (@$value[$field_name] == $field_value) {
+					$data[$key] = $file[$key];
+				} else {
+					unset($data[$key]);
+				}
+			}
+		}
+		if ($param == 3) {
+			$operator == '=' ? $operator = '==' : $operator = $operator;
+			foreach ($file as $key => $value) {
+				$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
+				$result = eval($str);
+				if ($result) {
+					$data[$key] = $file[$key];
+				} else {
+					unset($data[$key]);
+				}
 			}
 		}
 		$this->filterResult = $data;
+		return $this;
+	}
+
+	public function whereAll(array $array)
+	{
+		$value_array = false;
+		foreach ($array as $key => $value) {
+			if (is_array($value)) {
+				$value_array = true;
+			}
+		}
+		if ($value_array) {
+			foreach ($array as $key => $value) {
+				$this->where($value[0], $value[1], $value[2]);
+			}
+		} else {
+			foreach ($array as $key => $value) {
+				$this->where($key, $value);
+			}
+		}
 		return $this;
 	}
 
