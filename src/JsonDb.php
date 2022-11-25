@@ -3,7 +3,7 @@
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.2
+ * @version 2.3
  * @link    https://gitee.com/yh_IT/json-db
  *
  **/
@@ -16,13 +16,12 @@ class JsonDb
 	/** 自定义配置项 */
 	public $options = [
 		'table_name' => null, //单表模式
-		'compress_mode' => null, //加密函数
-		'decompress_mode' => null, //解密函数
+		'encode' => null, //加密函数
+		'decode' => null, //解密函数
 		'file_suffix' => '.json', //文件后缀名
 		'path' => null, //自定义存储路径
 		'directory_name' => 'JsonDb', //存储的目录名
 		'debug' => true, //调试模式
-		'options_table_name' => 'database_options' //JsonDb配置文件名称
 	];
 
 	/**
@@ -44,31 +43,16 @@ class JsonDb
 	public $filterResult;
 
 	/** 对数据限制的处理条数 */
-	public $limit;
+	public $limit = null;
 
 	/**
 	 * JsonDb
-	 * @param array $options 要添加的数据
+	 * @param array $options JsonDb配置
 	 */
 	public function __construct($options = null)
 	{
 		// 更新配置数据
 		$this->options = $options ? array_merge($this->options, $options) : $this->options;
-
-		$compress_function = [
-			['gzcompress', 'gzuncompress', '.zlib'],
-			['gzencode', 'gzdecode', '.gzip'],
-			['gzdeflate', 'gzinflate', '.deflate'],
-			['bzcompress', 'bzdecompress', 'bzip2']
-		];
-
-		// 寻找是否使用上方数组中的函数 如果有使用就自动配置解压函数和文件后缀名
-		foreach ($compress_function as $value) {
-			if ($this->options['compress_mode'] == $value[0]) {
-				$this->options['decompress_mode'] = $value[1];
-				$this->options['file_suffix'] = $value[2];
-			}
-		}
 
 		// 检测站点根目录
 		if (@$_SERVER['DOCUMENT_ROOT']) {
@@ -84,48 +68,6 @@ class JsonDb
 		$this->options['table_name'] ? $this->table($this->options['table_name']) : false;
 	}
 
-	function initialize()
-	{
-		// 将表路径指向配置文件
-		$this->tableSwitch($this->options['options_table_name']);
-
-		// 检测表是否存在
-		if (!$this->tableExists($this->options['options_table_name'])) {
-			// 不存在便创建一个空表
-			$this->arrayFile(array());
-		}
-
-		// 检测是否有表名 没有则无需下面操作
-		if ((@!$this->tableName) && (!$this->options['table_name'])) {
-			return false;
-		}
-
-		// 获取要添加配置文件的表的名字
-		$table_name = $this->tableName ? $this->tableName : $this->options['table_name'];
-
-		// 因为已经指向 tableFile 直接查询配置文件即可
-		$table_options = $this->where('table_name', $table_name)->find();
-
-		// 如果没有该表名的配置那么添加该表命的配置
-		if (empty($table_options)) {
-			$data = $this->jsonFile();
-			if (empty($data)) {
-				$data = [];
-			}
-			$data[] = [
-				'table_name' => $table_name,
-				'primary_key' => ['id'],
-				'auto_increme_int' => [
-					'id' => 0
-				]
-			];
-			$this->arrayFile($data);
-		}
-
-		// 恢复以前指向的表路径
-		$this->tableSwitch($table_name);
-	}
-
 	/**
 	 * 添加单条数据
 	 * @access public
@@ -134,39 +76,9 @@ class JsonDb
 	 */
 	public function insert(array $array)
 	{
-		// 调用主键检测
-		if ($this->primaryKeyExists($array) === true) {
-			return false;
-		}
-
 		// 获取表中原来的数据
 		$data = $this->jsonFile();
-
-		// 如果数据为空那么将表指定为一个空数组
-		if (empty($data)) {
-			$data = [];
-		}
-
-		// 获取被添加数据的表的配置项
-		$table_options = $this->tableOptions();
-		$auto_increme_int = $table_options['auto_increme_int'];
-		if (is_array($auto_increme_int)) {
-			foreach ($auto_increme_int as $key => $value) {
-				$array[$key] = $value;
-				$auto_increme_int[$key]++;
-			}
-
-			// 更新配置文件中的此表的自动递增值
-			$this->tableSwitch($this->options['options_table_name'])->where('table_name', $this->tableName)->update([
-				'auto_increme_int' => $auto_increme_int
-			]);
-
-			// 恢复原来表的路径
-			$this->tableSwitch($this->tableName);
-		}
-		$num = $auto_increme_int['id'] - 1;
-		$num = "$num";
-		$data[$num] = $array;
+		$data[] = $array;
 		return $this->arrayFile($data);
 	}
 
@@ -317,7 +229,7 @@ class JsonDb
 	}
 
 	/**
-	 * 查询所有数据
+	 * 查询数据的长度
 	 * @access public
 	 * @return integer
 	 */
@@ -364,58 +276,6 @@ class JsonDb
 	}
 
 	/**
-	 * 备份JsonDb的数据
-	 * @access public
-	 * @param string $path 备份路径
-	 * @return array
-	 */
-	public function backup($path)
-	{
-		$backup_path = $path . '/JsonDb-' . date('Y-m-d H:i:s') . '/';
-		$path = $this->tableRoot . '/';
-		return $this->copyDir($path, $backup_path);
-	}
-
-	/**
-	 * @access public
-	 * @return array
-	 */
-	private function copyDir($path, $delPath)
-	{
-		//扫描文件
-		$files = scandir($path);
-		if (is_array($files)) {
-			foreach ($files as $file) {
-				if (is_file($path . $file)) {
-					$fileName = basename($file);
-					$fileNameOrigin = $path . $fileName;
-					if (!file_exists($delPath)) {
-						mkdir($delPath, 0777, true);
-					}
-					$fileNameOriginDel = $delPath . $fileName;
-					copy($fileNameOrigin, $fileNameOriginDel);
-				}
-			}
-		}
-		return [
-			'old' => $path,
-			'new' => $delPath
-		];
-	}
-
-	/**
-	 * 恢复JsonDb备份的数据，会覆盖原来数据
-	 * @access public
-	 * @param string $dir 数据目录
-	 * @return array
-	 */
-	public function recover($dir)
-	{
-		$path = $this->tableRoot . '/';
-		return $this->copyDir($dir, $path);
-	}
-
-	/**
 	 * 指定当前操作的数据表
 	 * @access public
 	 * @param string $table_name 表名
@@ -425,10 +285,6 @@ class JsonDb
 	{
 		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		$this->tableName = $table_name;
-		$this->initialize();
-		if (!is_numeric($this->limit)) {
-			$this->limit = null;
-		}
 		return $this;
 	}
 
@@ -442,82 +298,6 @@ class JsonDb
 	{
 		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		return $this;
-	}
-
-	/**
-	 * 添加数据表的主键
-	 * @access public
-	 * @param string|array $primary_key 要添加的主键 数组形式则批量添加
-	 * @return $this
-	 */
-	public function primaryKeyAdd($primary_key)
-	{
-		return $this->tableOptionsAdd('primary_key', $primary_key);
-	}
-
-	/**
-	 * 添加数据表的自动递增整数字段
-	 * @access public
-	 * @param string|array $increme_name
-	 * @return $this
-	 */
-	public function autoIncremeIntAdd($increme_name)
-	{
-		return $this->tableOptionsAdd('auto_increme_int', $increme_name);
-	}
-
-	public function tableOptionsAdd($field_name, $field_value)
-	{
-		$table_name = $this->tableName;
-		$table_options = $this->tableOptions();
-		if ((is_array($table_options[$field_name])) && (!empty($table_options[$field_name]))) {
-			$field_value_list = $table_options[$field_name];
-		} else {
-			$field_value_list = [];
-		}
-
-		if ($field_name == 'auto_increme_int') {
-			if (is_array($field_value)) {
-				foreach ($field_value as $value) {
-					$field_value_list[$value] = 0;
-				}
-			} else {
-				$field_value_list[$field_value] = 0;
-			}
-		} else {
-			if (is_array($field_value)) {
-				foreach ($field_value as $value) {
-					$field_value_list[] = $value;
-				}
-			} else {
-				$field_value_list[] = $field_value;
-			}
-			$field_value_list = array_values(array_unique($field_value_list));
-		}
-
-
-		$update = $this->tableSwitch($this->options['options_table_name'])->where('table_name', $table_name)->update([
-			$field_name => $field_value_list
-		]);
-		if ($update) {
-			return true;
-		}
-		return $update;
-	}
-
-	/**
-	 * 获取表的配置
-	 * @access public
-	 * @param string $table_name 可选，自定义表名
-	 * @return array
-	 */
-	public function tableOptions($table_name = null)
-	{
-		$table_name = $table_name ? $table_name : $this->tableName;
-		$tableFile = $this->tableFile;
-		$find = $this->tableSwitch($this->options['options_table_name'])->where('table_name', $table_name)->find();
-		$this->tableFile = $tableFile;
-		return $find;
 	}
 
 	/**
@@ -540,39 +320,6 @@ class JsonDb
 	}
 
 	/**
-	 * 检查添加数据的主键值是否存在
-	 * @access public
-	 * @param array $array 要检查的数据
-	 * @param string $table_name 可选 数据表名
-	 * @return bool
-	 */
-	private function primaryKeyExists($array, $table_name = null)
-	{
-		$table_name = $table_name ? $table_name : $this->tableName;
-		$table_options = $this->tableSwitch($this->options['options_table_name'])->where('table_name', $table_name)->find();
-		if (empty($table_options['primary_key'])) {
-			return false;
-		}
-		if ((!is_array($table_options['primary_key']))) {
-			return false;
-		}
-		$primary_key_list = $table_options['primary_key'];
-		foreach ($primary_key_list as $primary_value) {
-			foreach ($array as $key => $value) {
-				if ($key == $primary_value) {
-					$seek = $this->tableSwitch($table_name)->where($key, $value)->find();
-					if ($seek) {
-						$this->DbError('当前插入数据中存在相同主键值');
-						return true;
-					}
-				}
-			}
-		}
-		$this->tableSwitch($this->tableName);
-		return false;
-	}
-
-	/**
 	 * 根据字段条件过滤数组中的元素
 	 * @access public
 	 * @param string $field_name 字段名
@@ -587,7 +334,6 @@ class JsonDb
 			$this->filterResult = [];
 			return $this;
 		}
-		$data = [];
 		$param = func_num_args();
 		if ($param == 1) {
 			$match = preg_match_all('/`field_([\w,\d]+)`/s', $field_name, $match_array);
@@ -603,20 +349,16 @@ class JsonDb
 			$str = 'return(' . $str . ');';
 			foreach ($file as $key => $value) {
 				$result = eval($str);
-				if ($result) {
-					$data[$key] = $file[$key];
-				} else {
-					unset($data[$key]);
+				if (!$result) {
+					unset($file[$key]);
 				}
 			}
 		}
 		if ($param == 2) {
 			$field_value  = $operator;
 			foreach ($file as $key => $value) {
-				if (@$value[$field_name] == $field_value) {
-					$data[$key] = $file[$key];
-				} else {
-					unset($data[$key]);
+				if (@$value[$field_name] != $field_value) {
+					unset($file[$key]);
 				}
 			}
 		}
@@ -625,14 +367,12 @@ class JsonDb
 			foreach ($file as $key => $value) {
 				$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
 				$result = eval($str);
-				if ($result) {
-					$data[$key] = $file[$key];
-				} else {
-					unset($data[$key]);
+				if (!$result) {
+					unset($file[$key]);
 				}
 			}
 		}
-		$this->filterResult = $data;
+		$this->filterResult = $file;
 		return $this;
 	}
 
@@ -666,7 +406,6 @@ class JsonDb
 	public function whereLike($field_name, $field_value)
 	{
 		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
-		$data = [];
 		$field_value = preg_quote($field_value, '/');
 		if (preg_match('/%.*%/', $field_value) <= 0) {
 			if (preg_match('/^%/', $field_value) > 0) {
@@ -680,12 +419,11 @@ class JsonDb
 		$field_value = '/' . $field_value . '/s';
 		foreach ($file as $key => $value) {
 			if (preg_match($field_value, @$value[$field_name]) > 0) {
-				$data[$key] = $file[$key];
 			} else {
-				$data = [];
+				unset($file[$key]);
 			}
 		}
-		$this->filterResult = $data;
+		$this->filterResult = $file;
 		return $this;
 	}
 
@@ -752,7 +490,7 @@ class JsonDb
 	 */
 	public function jsonEncode($array)
 	{
-		return json_encode($array, ((empty($this->options['compress_mode'])) ? (128 | 256) : (256)));
+		return json_encode($array, ((empty($this->options['encode'])) ? (128 | 256) : (256)));
 	}
 
 	/**
@@ -764,13 +502,16 @@ class JsonDb
 	public function jsonFile()
 	{
 		if (!file_exists($this->tableFile)) {
-			return false;
+			return [];
 		}
 		$data = file_get_contents($this->tableFile);
-		$data = $this->options['decompress_mode'] ? $this->options['decompress_mode']($data) : $data;
+		$data = $this->options['decode'] ? $this->options['decode']($data) : $data;
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
 			$this->DbError('文件数据错误！');
+		}
+		if (empty($data)) {
+			return [];
 		}
 		return $data;
 	}
@@ -784,14 +525,15 @@ class JsonDb
 	 */
 	private function arrayFile(array $array, $table_name = null)
 	{
-		$data = $this->jsonEncode($array);
+		$data = array_values($array);
+		$data = $this->jsonEncode($data);
 		if ($table_name) {
 			$this->tableSwitch($table_name);
 		}
 		if (!file_exists($this->tableRoot)) {
 			mkdir($this->tableRoot, 0755, true);
 		}
-		$data = $this->options['compress_mode'] ? $this->options['compress_mode']($data) : $data;
+		$data = $this->options['encode'] ? $this->options['encode']($data) : $data;
 		return file_put_contents($this->tableFile, $data);
 	}
 
