@@ -24,10 +24,7 @@ class JsonDb
 		'debug' => true, //调试模式
 	];
 
-	/**
-	 * 错误信息
-	 * @return string
-	 */
+	/** 错误信息 */
 	public $error;
 
 	/** JSON数据存储文件夹基于的根目录 */
@@ -46,7 +43,7 @@ class JsonDb
 	public $limit = null;
 
 	/**
-	 * JsonDb
+	 * 初始化配置
 	 * @param array $options JsonDb配置
 	 */
 	public function __construct($options = null)
@@ -78,7 +75,9 @@ class JsonDb
 	{
 		// 获取表中原来的数据
 		$data = $this->jsonFile();
-		$data[] = $array;
+		$end_data = end($data);
+		$array['id'] = @$array['id'] ? $array['id'] : (is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1);
+		array_push($data, $array);
 		return $this->arrayFile($data);
 	}
 
