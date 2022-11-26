@@ -37,7 +37,7 @@ class JsonDb
 	public $tableFile;
 
 	/** 筛选后的结果 */
-	public $filterResult;
+	public $filterResult = null;
 
 	/** 对数据限制的处理条数 */
 	public $limit = null;
@@ -124,7 +124,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = false;
+		$this->filterResult = null;
 		return $update;
 	}
 
@@ -149,7 +149,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = false;
+		$this->filterResult = null;
 		return $delete;
 	}
 
@@ -175,19 +175,23 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = false;
+		$this->filterResult = null;
 		return $delete;
 	}
 
 	/**
 	 * 查询单条数据
+	 * @param $id 通过ID查询指定数据
 	 * @access public
 	 * @return array
 	 */
-	public function find()
+	public function find($id = null)
 	{
+		if ($id) {
+			$this->where('id', $id);
+		}
 		$where = $this->filterResult;
-		$this->filterResult = false;
+		$this->filterResult = null;
 		if (empty($where)) {
 			return [];
 		}
@@ -202,7 +206,7 @@ class JsonDb
 	public function select()
 	{
 		$where = $this->filterResult;
-		$this->filterResult = false;
+		$this->filterResult = null;
 		if (empty($where)) {
 			return [];
 		}
@@ -235,7 +239,7 @@ class JsonDb
 	public function count()
 	{
 		$where = $this->filterResult;
-		$this->filterResult = false;
+		$this->filterResult = null;
 		$data = $where ? $where : $this->jsonFile();
 		if (empty($data)) {
 			return 0;
@@ -253,7 +257,7 @@ class JsonDb
 	public function limit(int $offset, int $length = null)
 	{
 		$this->limit = $offset;
-		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();;
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (empty($file)) {
 			$this->DbError('limit语句查找不到数据');
 			return $this;
@@ -328,7 +332,7 @@ class JsonDb
 	 */
 	public function where($field_name, $operator = null, $field_value = null)
 	{
-		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (!is_array($file)) {
 			$this->filterResult = [];
 			return $this;
@@ -404,7 +408,7 @@ class JsonDb
 	 */
 	public function whereLike($field_name, $field_value)
 	{
-		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		$field_value = preg_quote($field_value, '/');
 		if (preg_match('/%.*%/', $field_value) <= 0) {
 			if (preg_match('/^%/', $field_value) > 0) {
@@ -434,7 +438,7 @@ class JsonDb
 	 */
 	public function beforeKey($field_name)
 	{
-		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		$keys = array_keys($file);
 		$len = array_search($field_name, $keys);
 		$this->filterResult = array_slice($file, 0, $len);
@@ -449,7 +453,7 @@ class JsonDb
 	 */
 	public function afterKey($field_name)
 	{
-		$file = $this->filterResult ? $this->filterResult : $this->jsonFile();
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		$keys = array_keys($file);
 		$offset = array_search($field_name, $keys);
 		$this->filterResult = array_slice($file, $offset + 1);
@@ -465,11 +469,7 @@ class JsonDb
 	 */
 	public function order($field_name, $order = SORT_DESC)
 	{
-		if (empty($this->filterResult)) {
-			$file = $this->jsonFile();
-		} else {
-			$file = $this->filterResult;
-		}
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		foreach ($file as $key => $value) {
 			if (!isset($value[$field_name])) {
 				$file[$key][$field_name] = ($order == SORT_DESC ? 0 : 99999999);
