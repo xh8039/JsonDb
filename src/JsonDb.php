@@ -66,19 +66,77 @@ class JsonDb
 	}
 
 	/**
-	 * 添加单条数据
+	 * 字段值增长
 	 * @access public
-	 * @param array $array 要添加的数据
-	 * @return integer|false 成功则以int形式返回添加数据的总字节 失败则返回false
+	 * @param string  $field    字段名
+	 * @param float   $step     增长值
+	 * @return $this
 	 */
-	public function insert(array $array)
+	public function inc(string $field, float $step = 1)
+	{
+		$where = $this->filterResult;
+		if (empty($where)) {
+			return $this;
+		}
+		foreach ($where as $key => $value) {
+			if (is_numeric($value[$field])) {
+				$this->filterResult[$key][$field] = $value[$field] + $step;
+			}
+		}
+		return $this;
+	}
+
+	/**
+	 * 字段值减少
+	 * @access public
+	 * @param string  $field    字段名
+	 * @param float   $step     增长值
+	 * @return $this
+	 */
+	public function dec(string $field, float $step = 1)
+	{
+		$where = $this->filterResult;
+		if (empty($where)) {
+			return $this;
+		}
+		foreach ($where as $key => $value) {
+			if (is_numeric($value[$field])) {
+				$this->filterResult[$key][$field] = $value[$field] - $step;
+			}
+		}
+		return $this;
+	}
+
+	/**
+	 * 插入记录
+	 * @access public
+	 * @param array   $data         数据
+	 * @param boolean $getLastInsID 返回自增主键
+	 * @return integer|string
+	 */
+	public function insert(array $data = [], bool $getLastInsID = false)
 	{
 		// 获取表中原来的数据
-		$data = $this->jsonFile();
-		$end_data = end($data);
-		$array['id'] = @$array['id'] ? $array['id'] : (is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1);
-		array_push($data, $array);
-		return $this->arrayFile($data);
+		$file = $this->jsonFile();
+		$end_data = end($file);
+		$data['id'] = @$data['id'] ? $data['id'] : (is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1);
+		array_push($file, $data);
+		if ($getLastInsID) {
+			$this->arrayFile($file);
+			return $data['id'];
+		}
+		return $this->arrayFile($file);
+	}
+
+	/**
+	 * 插入记录并获取自增ID
+	 * @access public
+	 * @param array $data 数据
+	 * @return integer|string
+	 */
+	public function insertGetId(array $data)
+	{
+		return $this->insert($data, true);
 	}
 
 	/**
@@ -101,7 +159,7 @@ class JsonDb
 	}
 
 	/**
-	 * 更新数据
+	 * 更新记录
 	 * @access public
 	 * @param array $array 要更新的数据
 	 * @return integer 返回更新的键值数量
@@ -187,7 +245,7 @@ class JsonDb
 	 */
 	public function find($id = null)
 	{
-		if ($id) {
+		if (is_numeric($id)) {
 			$this->where('id', $id);
 		}
 		$where = $this->filterResult;
@@ -201,15 +259,17 @@ class JsonDb
 	/**
 	 * 查询多条数据
 	 * @access public
+	 * @param bool $key
 	 * @return array
 	 */
-	public function select()
+	public function select(bool $key = false)
 	{
 		$where = $this->filterResult;
 		$this->filterResult = null;
 		if (empty($where)) {
 			return [];
 		}
+		if ($key) return $where;
 		return array_values($where);
 	}
 
@@ -218,7 +278,7 @@ class JsonDb
 	 * @access public
 	 * @return array
 	 */
-	public function selectAll()
+	public function selectAll($key = false)
 	{
 		$data = $this->jsonFile();
 		if (empty($data)) {
@@ -228,6 +288,7 @@ class JsonDb
 			$data = $data[0];
 			return $data;
 		}
+		if ($key) return $data;
 		return array_values($data);
 	}
 
@@ -286,6 +347,10 @@ class JsonDb
 	 */
 	public function table($table_name)
 	{
+		if (empty($table_name)) {
+			$this->DbError('表名不能为空');
+			return;
+		}
 		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
 		$this->tableName = $table_name;
 		return $this;
@@ -464,19 +529,24 @@ class JsonDb
 	 * ORDER排序
 	 * @access public
 	 * @param string $field_name 字段名
-	 * @param SORT_ASC|SORT_DESC $order 排序方式：SORT_ASC - 按升序排列|SORT_DESC - 按降序排列
+	 * @param $order 排序方式：['asc' => 按升序排列,'desc' => 按降序排列]
 	 * @return $this
 	 */
-	public function order($field_name, $order = SORT_DESC)
+	public function order($field_name, $order = 'desc')
 	{
+		$order_list = [
+			'asc' => SORT_ASC,
+			'desc' => SORT_DESC
+		];
+		$order_this = $order_list[$order] ? $order_list[$order] : $order;
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		foreach ($file as $key => $value) {
 			if (!isset($value[$field_name])) {
-				$file[$key][$field_name] = ($order == SORT_DESC ? 0 : 99999999);
+				$file[$key][$field_name] = ($order == 'desc' ? 0 : 99999999);
 			}
 		}
 		$column = array_column($file, $field_name);
-		array_multisort($column, $order, $file);
+		array_multisort($column, $order_this, $file);
 		$this->filterResult = $file;
 		return $this;
 	}
