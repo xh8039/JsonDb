@@ -25,24 +25,33 @@ git clone https://gitee.com/yh_IT/json-db.git
 // composer自动加载
 require 'vendor/autoload.php';
 
-use JsonDb\JsonDb\JsonDb;
+use JsonDb\JsonDb\Db;
 
 // 默认关闭数据压缩、加密并开启调试模式，可使用自定义配置
 // 自定义配置项 具体配置请参考文档：https://gitee.com/yh_IT/json-db/wikis
-$DB = new JsonDb;
+$json_path = $_SERVER['DOCUMENT_ROOT'] . 'content' . DIRECTORY_SEPARATOR . 'JsonDb';
+Db::setConfig([
+	'path' => $json_path, // 数据存储路径（必须配置）
+	'file_suffix' => '.json', // 文件后缀名
+	'debug' => true, // 调试模式
+	'encode' => null, // 数据加密函数
+	'decode' => null, // 数据解密函数
+]);
 ```
 
-### 插入单条数据 `insert`
+### 插入数据
+
+#### 插入单条数据 `insert`
 ```php
-$DB->table('json_data')->insert([
+DB::table('json_data')->insert([
 	'a' => 5,
 	'b' => "测试5"
 ]);
 ```
 
-### 批量插入数据 `insertAll`
+#### 批量插入数据 `insertAll`
 ```php
-$DB->table('json_data')->insertAll([
+DB::table('json_data')->insertAll([
 	[
 		'a' => 5,
 		'b' => "测试5"
@@ -54,89 +63,76 @@ $DB->table('json_data')->insertAll([
 ]);
 ```
 
-### 删除一行中的部分数据 `delete`
+#### 限制每次最大写入数量 `limit`
 ```php
-$DB->table('json_data')->where('b', '测试3')->delete(['a', 'b']);
+DB::table('user')->limit(100)->insertAll($userList);
 ```
 
-### 删除整行数据 `deleteAll`
+
+### 删除数据
+
+#### 删除一行中的部分数据 `delete`
 ```php
-$DB->table('json_data')->where('b', '测试3')->deleteAll();
+DB::table('json_data')->where('b', '测试3')->delete(['a', 'b']);
 ```
 
-### 更新数据 `update`
+#### 删除整行数据 `delete`
 ```php
-$DB->table('json_data')->where('b', '测试4')->update(['c' => '测试测试']);
+DB::table('json_data')->where('b', '测试3')->delete();
 ```
 
-### 查询单条数据 `find`
+#### 删除整个表的数据 `delete`
 ```php
-$DB->table('json_data')->where('b', '测试')->find();
+DB::table('json_data')->delete(true);
 ```
 
-### 查询多条数据 `select`
+
+### 更新数据
+
+#### 更新数据 `update`
 ```php
-$DB->table('json_data')->where('b', '测试4')->select();
+DB::table('json_data')->where('b', '测试4')->update(['c' => '测试测试']);
 ```
 
-### 查询表中所有数据 `selectAll`
+
+### 查询数据
+
+#### 查询单条数据 `find`
 ```php
-$DB->table('json_data')->selectAll();
+DB::table('json_data')->where('b', '测试')->find();
 ```
 
-### 根据ID查询数据
+#### 查询多条数据 `select`
 ```php
-$DB->table('json_data')->where('id', 0)->find();
+DB::table('json_data')->where('b', '测试4')->select();
 ```
 
-### 字段 `LIKE` 查询
+#### 查询表中所有数据 `selectAll`
 ```php
-$DB->table('json_data')->whereLike('b', '%测试')->select();
-// 或者
-$DB->table('json_data')->where('b', 'like', '%测试')->select();
+DB::table('json_data')->selectAll();
 ```
 
-### 自定义查询表达式
+#### 根据ID查询数据
 ```php
-$DB->table('json_data')->where('id', '>', 4)->select();
+DB::table('json_data')->where('id', 0)->find();
 ```
 
-### 链式 `where`
+#### 字段 `LIKE` 查询
 ```php
-$DB->table('json_data')->where('id', 1)->where('a', 2)->select();
+DB::table('json_data')->whereLike('b', '%测试')->select();
 ```
 
-### 自定义判断条件
+#### 自定义查询表达式
 ```php
-$select = $DB->table('json_data')->where('`field_id` == 0 || `field_b` == `测试4`')->select();
+DB::table('json_data')->where('id', '>', 4)->select();
 ```
 
-### 限制结果数量 `limit`
+#### 链式 `where`
 ```php
-$DB->table('user')->where('status', 1)->limit(10)->select();
+DB::table('json_data')->where('id', 1)->where('a', 2)->select();
 ```
 
-### 限制每次最大写入数量 `limit`
+#### 限制结果数量 `limit`
 ```php
-$DB->table('user')->limit(100)->insertAll($userList);
-```
-
-### 设置表中的主键字段 `primaryKeyAdd`
-```php
-$DB->table('JsonDb')->primaryKeyAdd('user');
-```
-
-### 批量设置表中的主键字段 `primaryKeyAdd`
-```php
-$DB->table('JsonDb')->primaryKeyAdd(['name','uid']);
-```
-
-### 设置自动递增整数字段 `autoIncremeIntAdd`
-```php
-$DB->table('JsonDb')->autoIncremeIntAdd('uid');
-```
-
-### 批量设置自动递增整数字段 `autoIncremeIntAdd`
-```php
-$DB->table('JsonDb')->autoIncremeIntAdd(['pid','mid']);
+DB::table('user')->where('status', 1)->limit(10)->select();
 ```

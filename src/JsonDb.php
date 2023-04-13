@@ -14,12 +14,24 @@ class JsonDb
 
 	/** 自定义配置项 */
 	public $options = [
-		'table_name' => null, //单表模式
-		'encode' => null, //加密函数
-		'decode' => null, //解密函数
-		'file_suffix' => '.json', //文件后缀名
-		'path' => null, //自定义存储路径
-		'debug' => true, //调试模式
+		'table_name' => null, // 单表模式
+		'encode' => null, // 加密函数
+		'decode' => null, // 解密函数
+		'file_suffix' => '.json', // 文件后缀名
+		'path' => null, // 自定义存储路径
+		'debug' => true, // 调试模式
+
+	];
+
+	public $table_options = [
+		'admin' => [
+			'auto_increme_fields' => ['id'], // 设置表中自动递增整数字段
+			'primary_key_fields' => ['id'] // 设置表中的主键字段
+		],
+		'options' => [
+			'auto_increme_fields' => [], // 设置表中自动递增整数字段
+			'primary_key_fields' => ['name'] // 设置表中的主键字段
+		],
 	];
 
 	/** 错误信息 */
@@ -198,12 +210,27 @@ class JsonDb
 	}
 
 	/**
+	 * 删除数据
+	 * @access public
+	 * @param array|bool $data 要删除的数据数组字段名，不传值则删除整列数据，删除整个表数据传布尔值 true
+	 * @return integer  返回影响数据的键值数量
+	 */
+	public function delete($data)
+	{
+		if (is_array($data)) {
+			return $this->deleteField($data);
+		} else {
+			return $this->deleteAll($data);
+		}
+	}
+
+	/**
 	 * 删除部分数据
 	 * @access public
 	 * @param array $array 要删除的部分数据字段名
 	 * @return integer  返回影响数据的键值数量
 	 */
-	public function delete(array $array)
+	public function deleteField(array $array)
 	{
 		$file = $this->jsonFile();
 		$delete = 0;
