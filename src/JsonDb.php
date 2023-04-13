@@ -1,15 +1,14 @@
 <?php
 
+namespace JsonDb\JsonDb;
+
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.3
+ * @version 2.6
  * @link    https://gitee.com/yh_IT/json-db
  *
  **/
-
-namespace JsonDb\JsonDb;
-
 class JsonDb
 {
 
@@ -20,15 +19,11 @@ class JsonDb
 		'decode' => null, //解密函数
 		'file_suffix' => '.json', //文件后缀名
 		'path' => null, //自定义存储路径
-		'directory_name' => 'JsonDb', //存储的目录名
 		'debug' => true, //调试模式
 	];
 
 	/** 错误信息 */
 	public $error;
-
-	/** JSON数据存储文件夹基于的根目录 */
-	public $dataRoot;
 
 	/** JSON数据存储文件夹的根目录 */
 	public $tableRoot;
@@ -48,18 +43,15 @@ class JsonDb
 	 */
 	public function __construct($options = null)
 	{
+		if (empty($this->options['path'])) $this->DbError('请配置数据表的存储目录');
+
 		// 更新配置数据
 		$this->options = $options ? array_merge($this->options, $options) : $this->options;
 
-		// 检测站点根目录
-		if (@$_SERVER['DOCUMENT_ROOT']) {
-			$this->dataRoot = $_SERVER['DOCUMENT_ROOT'] . '/';
-		} else {
-			$this->dataRoot = './';
-		}
-
 		// 数据存储的目录
-		$this->tableRoot = $this->dataRoot . $this->options['path'] . ($this->options['path'] ? '/' : null) . $this->options['directory_name'];
+		$this->tableRoot = $this->options['path'] . DIRECTORY_SEPARATOR;
+
+		$this->tableRoot = str_replace(['//', '\\\\'], ['/', '\\'], $this->tableRoot);
 
 		// 单表模式
 		$this->options['table_name'] ? $this->table($this->options['table_name']) : false;
@@ -119,7 +111,8 @@ class JsonDb
 		// 获取表中原来的数据
 		$file = $this->jsonFile();
 		$end_data = end($file);
-		$data['id'] = @$data['id'] ? $data['id'] : (is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1);
+		$data['id'] = is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1;
+		$data['create_time'] = isset($data['create_time']) ? $data['create_time'] : date('Y-m-d H:i:s');
 		array_push($file, $data);
 		if ($getLastInsID) {
 			$this->arrayFile($file);
@@ -158,6 +151,21 @@ class JsonDb
 		return $insertAll;
 	}
 
+	public function save(array $array, $primary_key = 'id')
+	{
+		// 检查要保存的数据中是否存在主键数据
+		if (isset($array[$primary_key])) {
+			$value = $array[$primary_key];
+			// 查询数据表中数据是否存在
+			$find = $this->where($primary_key, $value)->find();
+			if ($find) {
+				unset($array[$primary_key]);
+				return $this->where($primary_key, $value)->update($array);
+			}
+		}
+		return $this->insert($array);
+	}
+
 	/**
 	 * 更新记录
 	 * @access public
@@ -176,6 +184,9 @@ class JsonDb
 			foreach ($array as $array_key => $array_value) {
 				$update++;
 				$file[$key][$array_key] = $array_value;
+				if (!isset($array['update_time'])) {
+					$file[$key]['update_time'] = date('Y-m-d H:i:s');
+				}
 				if ($update == $this->limit) {
 					break;
 				}
@@ -251,9 +262,18 @@ class JsonDb
 		$where = $this->filterResult;
 		$this->filterResult = null;
 		if (empty($where)) {
-			return [];
+			return null;
 		}
 		return current($where);
+	}
+
+	public function value($field_name)
+	{
+		$find = $this->find();
+		if (isset($find[$field_name])) {
+			return $find[$field_name];
+		}
+		return $find;
 	}
 
 	/**
@@ -264,6 +284,9 @@ class JsonDb
 	 */
 	public function select(bool $key = false)
 	{
+		if (is_null($this->filterResult)) {
+			return $this->selectAll($key);
+		}
 		$where = $this->filterResult;
 		$this->filterResult = null;
 		if (empty($where)) {
@@ -283,10 +306,6 @@ class JsonDb
 		$data = $this->jsonFile();
 		if (empty($data)) {
 			return [];
-		}
-		if (count($data) == 1) {
-			$data = $data[0];
-			return $data;
 		}
 		if ($key) return $data;
 		return array_values($data);
@@ -351,8 +370,8 @@ class JsonDb
 			$this->DbError('表名不能为空');
 			return;
 		}
-		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
-		$this->tableName = $table_name;
+		$this->tableFile = $this->tableRoot . DIRECTORY_SEPARATOR . $table_name . $this->options['file_suffix'];
+		// $this->tableName = $table_name;
 		return $this;
 	}
 
@@ -364,27 +383,8 @@ class JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
-		$this->tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
+		$this->tableFile = $this->tableRoot . DIRECTORY_SEPARATOR . $table_name . $this->options['file_suffix'];
 		return $this;
-	}
-
-	/**
-	 * 检查指定数据表是否存在
-	 * @access public
-	 * @param string $table_name 可选 数据表名
-	 * @return bool
-	 */
-	public function tableExists($table_name = null)
-	{
-		if ($table_name) {
-			$tableFile = $this->tableRoot . '/' . $table_name . $this->options['file_suffix'];
-		} else {
-			$tableFile = $this->tableFile;
-		}
-		if (file_exists($tableFile)) {
-			return true;
-		}
-		return false;
 	}
 
 	/**
@@ -403,61 +403,53 @@ class JsonDb
 			return $this;
 		}
 		$param = func_num_args();
-		if ($param == 1) {
-			$match = preg_match_all('/`field_([\w,\d]+)`/s', $field_name, $match_array);
-			if (!$match) {
-				$this->DbError('判断条件无效 请检查是否存在伪字段名：`field_字段名`');
-				return $this;
-			}
-			foreach ($match_array[1] as $key => $value) {
-				$match_array[1][$key] = '$value[\'' . $value . '\']';
-			}
-			$str = str_replace($match_array[0], $match_array[1], $field_name);
-			$str = str_replace('`', '\'', $str);
-			$str = 'return(' . $str . ');';
-			foreach ($file as $key => $value) {
-				$result = eval($str);
-				if (!$result) {
-					unset($file[$key]);
-				}
-			}
+		if ($param == 1 && is_array($field_name)) {
+			$this->whereArray($field_name);
+			return $this;
 		}
-		if ($param == 2) {
-			$field_value  = $operator;
-			foreach ($file as $key => $value) {
-				if (@$value[$field_name] != $field_value) {
-					unset($file[$key]);
+		if ($param == 2) $operator = '=';
+		switch ($operator) {
+			case '=':
+				foreach ($file as $key => $value) {
+					if ($value[$field_name] != $field_value) unset($file[$key]);
 				}
-			}
-		}
-		if ($param == 3) {
-			$operator == '=' ? $operator = '==' : $operator = $operator;
-			foreach ($file as $key => $value) {
-				$str = 'return ' . $value[$field_name] . ' ' . $operator . ' ' . $field_value . ';';
-				$result = eval($str);
-				if (!$result) {
-					unset($file[$key]);
+				break;
+			case '>':
+				foreach ($file as $key => $value) {
+					if (!($value[$field_name] > $field_value)) unset($file[$key]);
 				}
-			}
+				break;
+			case '>=':
+				foreach ($file as $key => $value) {
+					if (!($value[$field_name] >= $field_value)) unset($file[$key]);
+				}
+				break;
+			case '<':
+				foreach ($file as $key => $value) {
+					if (!($value[$field_name] < $field_value)) unset($file[$key]);
+				}
+				break;
+			case '<=':
+				foreach ($file as $key => $value) {
+					if (!($value[$field_name] <= $field_value)) unset($file[$key]);
+				}
+				break;
+			default:
 		}
 		$this->filterResult = $file;
 		return $this;
 	}
 
-	public function whereAll(array $array)
+	public function whereArray(array $array)
 	{
-		$value_array = false;
 		foreach ($array as $key => $value) {
 			if (is_array($value)) {
-				$value_array = true;
-			}
-		}
-		if ($value_array) {
-			foreach ($array as $key => $value) {
-				$this->where($value[0], $value[1], $value[2]);
-			}
-		} else {
-			foreach ($array as $key => $value) {
+				if (isset($value[2])) {
+					$this->where($value[0], $value[1], $value[2]);
+				} else {
+					$this->where($value[0], $value[1]);
+				}
+			} else {
 				$this->where($key, $value);
 			}
 		}
@@ -559,7 +551,7 @@ class JsonDb
 	 */
 	public function jsonEncode($array)
 	{
-		return json_encode($array, ((empty($this->options['encode'])) ? (128 | 256) : (256)));
+		return json_encode($array, ((empty($this->options['encode'])) ? (JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (JSON_UNESCAPED_UNICODE)));
 	}
 
 	/**
@@ -574,10 +566,10 @@ class JsonDb
 			return [];
 		}
 		$data = file_get_contents($this->tableFile);
-		$data = $this->options['decode'] ? $this->options['decode']($data) : $data;
+		$data = empty($this->options['decode']) ? $data : call_user_func($this->options['decode'], $data);
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
-			$this->DbError('文件数据错误！');
+			$this->DbError('文件' . $this->tableFile . '数据错误！');
 		}
 		if (empty($data)) {
 			return [];
@@ -602,7 +594,7 @@ class JsonDb
 		if (!file_exists($this->tableRoot)) {
 			mkdir($this->tableRoot, 0755, true);
 		}
-		$data = $this->options['encode'] ? $this->options['encode']($data) : $data;
+		$data = empty($this->options['encode']) ? $data : call_user_func($this->options['encode'], $data);
 		return file_put_contents($this->tableFile, $data);
 	}
 

@@ -15,6 +15,8 @@ class Db
 
 	static private $options = [];
 
+	static private $DB = null;
+
 	/**
 	 * 初始化配置参数
 	 * @access public
@@ -34,7 +36,10 @@ class Db
 	 */
 	static public function table($table_name)
 	{
-		return (new JsonDb(self::$options))->table($table_name);
+		if (is_null(self::$DB)) {
+			self::$DB = new JsonDb(self::$options);
+		}
+		return self::$DB->table($table_name);
 	}
 
 	/**
@@ -45,9 +50,12 @@ class Db
 	 */
 	static public function name($table_name)
 	{
-		if (self::$options['prefix']) {
+		if (is_null(self::$DB)) {
+			self::$DB = new JsonDb(self::$options);
+		}
+		if (isset(self::$options['prefix'])) {
 			$table_name = self::$options['prefix'] . $table_name;
 		}
-		return (new JsonDb(self::$options))->table($table_name);
+		return self::$DB->table($table_name);
 	}
 }
