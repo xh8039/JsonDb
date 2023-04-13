@@ -5,10 +5,10 @@ namespace JsonDb\JsonDb;
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.6
+ * @version 2.30
  * @link    https://gitee.com/yh_IT/json-db
  *
- **/
+ */
 class JsonDb
 {
 
