@@ -49,12 +49,7 @@ class Db
 	 */
 	static public function name($table_name)
 	{
-		if (is_null(self::$DB)) {
-			self::$DB = new JsonDb(self::$options);
-		}
-		if (isset(self::$options['prefix'])) {
-			$table_name = self::$options['prefix'] . $table_name;
-		}
-		return self::$DB->table($table_name);
+		$table_name = isset(self::$options['prefix']) ? self::$options['prefix'] . $table_name : $table_name;
+		return self::table($table_name);
 	}
 }

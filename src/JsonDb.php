@@ -55,10 +55,10 @@ class JsonDb
 	 */
 	public function __construct($options = null)
 	{
-		if (empty($this->options['path'])) $this->DbError('请配置数据表的存储目录');
-
 		// 更新配置数据
 		$this->options = $options ? array_merge($this->options, $options) : $this->options;
+
+		if (empty($this->options['path'])) $this->DbError('请配置数据表的存储目录');
 
 		// 数据存储的目录
 		$this->tableRoot = $this->options['path'] . DIRECTORY_SEPARATOR;
@@ -422,19 +422,36 @@ class JsonDb
 	 * @param mixed  $field_value 字段值
 	 * @return $this
 	 */
-	public function where($field_name, $operator = null, $field_value = null)
+	public function where($a, $b = null, $c = null)
+	{
+		$param = func_num_args();
+		if ($param == 1 && is_array($a)) {
+			$this->whereArray($a);
+		}
+		if ($param == 2) {
+			$this->whereOperator($a, '=', $b);
+		}
+		if ($param == 3) {
+			$this->whereOperator($a, $b, $c);
+		}
+		return $this;
+	}
+
+	/**
+	 * 根据字段条件过滤数组中的元素
+	 * @access public
+	 * @param string $field_name 字段名
+	 * @param mixed  $operator 操作符 默认为 ==
+	 * @param mixed  $field_value 字段值
+	 * @return $this
+	 */
+	public function whereOperator($field_name, $operator, $field_value)
 	{
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (!is_array($file)) {
 			$this->filterResult = [];
 			return $this;
 		}
-		$param = func_num_args();
-		if ($param == 1 && is_array($field_name)) {
-			$this->whereArray($field_name);
-			return $this;
-		}
-		if ($param == 2) $operator = '=';
 		switch ($operator) {
 			case '=':
 				foreach ($file as $key => $value) {
