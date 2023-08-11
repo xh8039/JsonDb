@@ -20,7 +20,6 @@ class JsonDb
 		'file_suffix' => '.json', // 文件后缀名
 		'path' => null, // 自定义存储路径
 		'debug' => true, // 调试模式
-
 	];
 
 	public $table_options = [
@@ -439,13 +438,13 @@ class JsonDb
 
 	/**
 	 * 根据字段条件过滤数组中的元素
-	 * @access public
+	 * @access private
 	 * @param string $field_name 字段名
 	 * @param mixed  $operator 操作符 默认为 ==
 	 * @param mixed  $field_value 字段值
 	 * @return $this
 	 */
-	public function whereOperator($field_name, $operator, $field_value)
+	private function whereOperator($field_name, $operator, $field_value)
 	{
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (!is_array($file)) {
@@ -484,7 +483,7 @@ class JsonDb
 		return $this;
 	}
 
-	public function whereArray(array $array)
+	private function whereArray(array $array)
 	{
 		foreach ($array as $key => $value) {
 			if (is_array($value)) {

@@ -1,0 +1,6 @@
+/.gitattributes     export-ignore
+/.git               export-ignore
+/.gitignore         export-ignore
+/readme             export-ignore
+/README.md          export-ignore
+/example.php        export-ignore
