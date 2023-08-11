@@ -64,6 +64,8 @@ class JsonDb
 
 		$this->tableRoot = str_replace(['//', '\\\\'], ['/', '\\'], $this->tableRoot);
 
+		$this->tableRoot = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $this->tableRoot);
+
 		// 单表模式
 		$this->options['table_name'] ? $this->table($this->options['table_name']) : false;
 	}
@@ -77,11 +79,11 @@ class JsonDb
 	 */
 	public function inc(string $field, float $step = 1)
 	{
-		$where = $this->filterResult;
-		if (empty($where)) {
+		$result = $this->filterResult;
+		if (empty($result)) {
 			return $this;
 		}
-		foreach ($where as $key => $value) {
+		foreach ($result as $key => $value) {
 			if (is_numeric($value[$field])) {
 				$this->filterResult[$key][$field] = $value[$field] + $step;
 			}
@@ -98,11 +100,11 @@ class JsonDb
 	 */
 	public function dec(string $field, float $step = 1)
 	{
-		$where = $this->filterResult;
-		if (empty($where)) {
+		$result = $this->filterResult;
+		if (empty($result)) {
 			return $this;
 		}
-		foreach ($where as $key => $value) {
+		foreach ($result as $key => $value) {
 			if (is_numeric($value[$field])) {
 				$this->filterResult[$key][$field] = $value[$field] - $step;
 			}
@@ -124,6 +126,7 @@ class JsonDb
 		$end_data = end($file);
 		$data['id'] = is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1;
 		$data['create_time'] = isset($data['create_time']) ? $data['create_time'] : date('Y-m-d H:i:s');
+		$data['update_time'] = isset($data['update_time']) ? $data['update_time'] : $data['create_time'];
 		array_push($file, $data);
 		if ($getLastInsID) {
 			$this->arrayFile($file);
@@ -190,8 +193,8 @@ class JsonDb
 		if (empty($this->filterResult)) {
 			return 0;
 		}
-		$where = $this->filterResult;
-		foreach ($where as $key => $value) {
+		$result = $this->filterResult;
+		foreach ($result as $key => $value) {
 			foreach ($array as $array_key => $array_value) {
 				$update++;
 				$file[$key][$array_key] = $array_value;
@@ -233,8 +236,8 @@ class JsonDb
 	{
 		$file = $this->jsonFile();
 		$delete = 0;
-		$where = $this->filterResult;
-		foreach ($where as $key => $value) {
+		$result = $this->filterResult;
+		foreach ($result as $key => $value) {
 			foreach ($array as $array_value) {
 				$delete++;
 				unset($file[$key][$array_value]);
@@ -261,8 +264,8 @@ class JsonDb
 		}
 		$file = $this->jsonFile();
 		$delete = 0;
-		$where = $this->filterResult;
-		foreach ($where as $key => $value) {
+		$result = $this->filterResult;
+		foreach ($result as $key => $value) {
 			$delete++;
 			unset($file[$key]);
 			if ($delete == $this->limit) {
@@ -285,12 +288,12 @@ class JsonDb
 		if (is_numeric($id)) {
 			$this->where('id', $id);
 		}
-		$where = $this->filterResult;
+		$result = $this->filterResult;
 		$this->filterResult = null;
-		if (empty($where)) {
+		if (empty($result)) {
 			return null;
 		}
-		return current($where);
+		return current($result);
 	}
 
 	public function value($field_name)
@@ -313,13 +316,13 @@ class JsonDb
 		if (is_null($this->filterResult)) {
 			return $this->selectAll($key);
 		}
-		$where = $this->filterResult;
+		$result = $this->filterResult;
 		$this->filterResult = null;
-		if (empty($where)) {
+		if (empty($result)) {
 			return [];
 		}
-		if ($key) return $where;
-		return array_values($where);
+		if ($key) return $result;
+		return array_values($result);
 	}
 
 	/**
@@ -344,9 +347,9 @@ class JsonDb
 	 */
 	public function count()
 	{
-		$where = $this->filterResult;
+		$result = $this->filterResult;
 		$this->filterResult = null;
-		$data = $where ? $where : $this->jsonFile();
+		$data = $result ? $result : $this->jsonFile();
 		if (empty($data)) {
 			return 0;
 		}
