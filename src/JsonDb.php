@@ -569,7 +569,7 @@ class JsonDb
 	 * ORDER排序
 	 * @access public
 	 * @param string $field_name 字段名
-	 * @param $order 排序方式：['asc' => 按升序排列,'desc' => 按降序排列]
+	 * @param $order asc 按升序排列丨desc 按降序排列
 	 * @return $this
 	 */
 	public function order($field_name, $order = 'desc')
@@ -600,15 +600,14 @@ class JsonDb
 	private function jsonEncode($array)
 	{
 		/**
-		 * JSON_NUMERIC_CHECK 将所有数字字符串编码成数字
 		 * JSON_PRETTY_PRINT 用空白字符格式化返回的数据
 		 * JSON_UNESCAPED_UNICODE 以字面编码多字节 Unicode 字符（默认是编码成 \uXXXX）
 		 * JSON_UNESCAPED_SLASHES 不编码 /
 		 */
 		if ($this->options['debug']) {
-			return json_encode($array, JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			return json_encode($array, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		} else {
-			return json_encode($array, JSON_NUMERIC_CHECK);
+			return json_encode($array);
 		}
 	}
 
