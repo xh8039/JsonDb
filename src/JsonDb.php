@@ -593,13 +593,23 @@ class JsonDb
 
 	/**
 	 * 数组转JSON数据
-	 * @access public
+	 * @access private
 	 * @param array $array 要转换的数组
 	 * @return json|string
 	 */
-	public function jsonEncode($array)
+	private function jsonEncode($array)
 	{
-		return json_encode($array, ((empty($this->options['encode'])) ? (JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : (JSON_UNESCAPED_UNICODE)));
+		/**
+		 * JSON_NUMERIC_CHECK 将所有数字字符串编码成数字
+		 * JSON_PRETTY_PRINT 用空白字符格式化返回的数据
+		 * JSON_UNESCAPED_UNICODE 以字面编码多字节 Unicode 字符（默认是编码成 \uXXXX）
+		 * JSON_UNESCAPED_SLASHES 不编码 /
+		 */
+		if ($this->options['debug']) {
+			return json_encode($array, JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		} else {
+			return json_encode($array, JSON_NUMERIC_CHECK);
+		}
 	}
 
 	/**
