@@ -175,9 +175,11 @@ class JsonDb
 			if ($find) {
 				unset($array[$primary_key]);
 				return $this->where($primary_key, $value)->update($array);
+			} else {
+				return $this->insert($array);
 			}
 		}
-		return $this->insert($array);
+		return false;
 	}
 
 	/**
