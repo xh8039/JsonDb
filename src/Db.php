@@ -5,16 +5,17 @@ namespace JsonDb\JsonDb;
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.30
+ * @version dev
  * @link    https://gitee.com/yh_IT/json-db
- *
+ * 易航天地
+ * http://bri6.cn
  */
 class Db
 {
 
 	static private $options = [];
 
-	static private $DB = null;
+	// static private $DB = null;
 
 	/**
 	 * 初始化配置参数
@@ -35,10 +36,11 @@ class Db
 	 */
 	static public function table($table_name)
 	{
-		if (is_null(self::$DB)) {
-			self::$DB = new JsonDb(self::$options);
-		}
-		return self::$DB->table($table_name);
+		return (new JsonDb(self::$options))->table($table_name);
+		// if (is_null(self::$DB)) {
+			// self::$DB = new JsonDb(self::$options);
+		// }
+		// return self::$DB->table($table_name);
 	}
 
 	/**

@@ -5,9 +5,10 @@ namespace JsonDb\JsonDb;
 /**
  * @package JsonDb
  * @author  易航
- * @version 2.30
+ * @version dev
  * @link    https://gitee.com/yh_IT/json-db
- *
+ * 易航天地
+ * http://bri6.cn
  */
 class JsonDb
 {
@@ -22,16 +23,16 @@ class JsonDb
 		'debug' => true, // 调试模式
 	];
 
-	public $table_options = [
-		'admin' => [
-			'auto_increme_fields' => ['id'], // 设置表中自动递增整数字段
-			'primary_key_fields' => ['id'] // 设置表中的主键字段
-		],
-		'options' => [
-			'auto_increme_fields' => [], // 设置表中自动递增整数字段
-			'primary_key_fields' => ['name'] // 设置表中的主键字段
-		],
-	];
+	// public $table_options = [
+	// 	'admin' => [
+	// 		'auto_increme_fields' => ['id'], // 设置表中自动递增整数字段
+	// 		'primary_key_fields' => ['id'] // 设置表中的主键字段
+	// 	],
+	// 	'options' => [
+	// 		'auto_increme_fields' => [], // 设置表中自动递增整数字段
+	// 		'primary_key_fields' => ['name'] // 设置表中的主键字段
+	// 	],
+	// ];
 
 	/** 错误信息 */
 	public $error;
@@ -75,7 +76,7 @@ class JsonDb
 	 * @access public
 	 * @param string  $field    字段名
 	 * @param float   $step     增长值
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function inc(string $field, float $step = 1)
 	{
@@ -96,7 +97,7 @@ class JsonDb
 	 * @access public
 	 * @param string  $field    字段名
 	 * @param float   $step     增长值
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function dec(string $field, float $step = 1)
 	{
@@ -157,14 +158,18 @@ class JsonDb
 		$insertAll = 0;
 		foreach ($array as $value) {
 			$insertAll++;
-			if ($insertAll === $this->limit) {
-				break;
-			}
+			if ($insertAll === $this->limit) break;
 			$this->insert($value);
 		}
 		return $insertAll;
 	}
 
+	/**
+	 * 保存数据
+	 * @access public
+	 * @param array $array 要保存的数组数据
+	 * @param $primary_key 主键名，要保存的数据中需要有这个键名
+	 */
 	public function save(array $array, $primary_key = 'id')
 	{
 		// 检查要保存的数据中是否存在主键数据
@@ -203,13 +208,11 @@ class JsonDb
 				if (!isset($array['update_time'])) {
 					$file[$key]['update_time'] = date('Y-m-d H:i:s');
 				}
-				if ($update == $this->limit) {
-					break;
-				}
+				if ($update == $this->limit) break;
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = null;
+		// $this->filterResult = null;
 		return $update;
 	}
 
@@ -249,7 +252,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = null;
+		// $this->filterResult = null;
 		return $delete;
 	}
 
@@ -275,7 +278,7 @@ class JsonDb
 			}
 		}
 		$this->arrayFile($file);
-		$this->filterResult = null;
+		// $this->filterResult = null;
 		return $delete;
 	}
 
@@ -291,10 +294,8 @@ class JsonDb
 			$this->where('id', $id);
 		}
 		$result = $this->filterResult;
-		$this->filterResult = null;
-		if (empty($result)) {
-			return null;
-		}
+		// $this->filterResult = null;
+		if (empty($result)) return null;
 		return current($result);
 	}
 
@@ -319,10 +320,8 @@ class JsonDb
 			return $this->selectAll($key);
 		}
 		$result = $this->filterResult;
-		$this->filterResult = null;
-		if (empty($result)) {
-			return [];
-		}
+		// $this->filterResult = null;
+		if (empty($result)) return [];
 		if ($key) return $result;
 		return array_values($result);
 	}
@@ -335,9 +334,7 @@ class JsonDb
 	public function selectAll($key = false)
 	{
 		$data = $this->jsonFile();
-		if (empty($data)) {
-			return [];
-		}
+		if (empty($data)) return [];
 		if ($key) return $data;
 		return array_values($data);
 	}
@@ -350,11 +347,9 @@ class JsonDb
 	public function count()
 	{
 		$result = $this->filterResult;
-		$this->filterResult = null;
+		// $this->filterResult = null;
 		$data = $result ? $result : $this->jsonFile();
-		if (empty($data)) {
-			return 0;
-		}
+		if (empty($data)) return 0;
 		return count($data);
 	}
 
@@ -363,7 +358,7 @@ class JsonDb
 	 * @access public
 	 * @param int $offset 起始位置
 	 * @param int $length 查询数量
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function limit(int $offset, int $length = null)
 	{
@@ -393,7 +388,7 @@ class JsonDb
 	 * 指定当前操作的数据表
 	 * @access public
 	 * @param string $table_name 表名
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function table($table_name)
 	{
@@ -410,7 +405,7 @@ class JsonDb
 	 * 内部调用表切换
 	 * @access public
 	 * @param string $table_name 要切换的数据表名
-	 * @return $this
+	 * @return JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
@@ -421,71 +416,68 @@ class JsonDb
 	/**
 	 * 根据字段条件过滤数组中的元素
 	 * @access public
-	 * @param string $field_name 字段名
-	 * @param mixed  $operator 操作符 默认为 ==
-	 * @param mixed  $field_value 字段值
-	 * @return $this
+	 * @param string|array $a 字段名|筛选条件数组
+	 * @param mixed  $b 操作符|字段值
+	 * @param mixed  $c 字段值
+	 * @return JsonDb
 	 */
 	public function where($a, $b = null, $c = null)
 	{
 		$param = func_num_args();
-		if ($param == 1 && is_array($a)) {
-			$this->whereArray($a);
-		}
-		if ($param == 2) {
-			$this->whereOperator($a, '=', $b);
-		}
-		if ($param == 3) {
-			$this->whereOperator($a, $b, $c);
-		}
+		if ($param == 1 && is_array($a)) $this->whereArray($a);
+		if ($param == 2) $this->filter($a, '=', $b);
+		if ($param == 3) $this->filter($a, $b, $c);
 		return $this;
 	}
 
 	/**
-	 * 根据字段条件过滤数组中的元素
-	 * @access private
+	 * 根据字段过滤数组
 	 * @param string $field_name 字段名
-	 * @param mixed  $operator 操作符 默认为 ==
-	 * @param mixed  $field_value 字段值
-	 * @return $this
+	 * @param string $operator 操作符
+	 * @param mixed $field_value 字段值
+	 * @return JsonDb
 	 */
-	private function whereOperator($field_name, $operator, $field_value)
+	private function filter(string $field_name, string $operator, $field_value)
 	{
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (!is_array($file)) {
 			$this->filterResult = [];
 			return $this;
 		}
+
+		$filtered = [];
+
+		$filtered = array_filter($file, function ($item) use ($field_name, $operator, $field_value) {
+			if (!isset($item[$field_name])) return false;
+			return $this->compare($item[$field_name], $operator, $field_value);
+		});
+
+		$this->filterResult = $filtered;
+		return $this;
+	}
+
+	/**
+	 * 比较值
+	 * @return bool
+	 */
+	private function compare($value, $operator, $filterValue)
+	{
 		switch ($operator) {
 			case '=':
-				foreach ($file as $key => $value) {
-					if ($value[$field_name] != $field_value) unset($file[$key]);
-				}
-				break;
+				return $value == $filterValue;
 			case '>':
-				foreach ($file as $key => $value) {
-					if (!($value[$field_name] > $field_value)) unset($file[$key]);
-				}
-				break;
+				return $value > $filterValue;
 			case '>=':
-				foreach ($file as $key => $value) {
-					if (!($value[$field_name] >= $field_value)) unset($file[$key]);
-				}
-				break;
+				return $value >= $filterValue;
 			case '<':
-				foreach ($file as $key => $value) {
-					if (!($value[$field_name] < $field_value)) unset($file[$key]);
-				}
-				break;
+				return $value < $filterValue;
 			case '<=':
-				foreach ($file as $key => $value) {
-					if (!($value[$field_name] <= $field_value)) unset($file[$key]);
-				}
-				break;
+				return $value <= $filterValue;
+			case '==':
+				return $value === $filterValue;
 			default:
+				return false;
 		}
-		$this->filterResult = $file;
-		return $this;
 	}
 
 	private function whereArray(array $array)
@@ -509,7 +501,7 @@ class JsonDb
 	 * @access public
 	 * @param string $field_name 字段名
 	 * @param mixed $field_value 字段值
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function whereLike($field_name, $field_value)
 	{
@@ -526,8 +518,7 @@ class JsonDb
 		$field_value = str_replace('%', '.*', $field_value);
 		$field_value = '/' . $field_value . '/s';
 		foreach ($file as $key => $value) {
-			if (preg_match($field_value, @$value[$field_name]) > 0) {
-			} else {
+			if (preg_match($field_value, @$value[$field_name]) <= 0) {
 				unset($file[$key]);
 			}
 		}
@@ -539,7 +530,7 @@ class JsonDb
 	 * 查询指定键名之前的数据
 	 * @access public
 	 * @param string $field_name 字段名
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function beforeKey($field_name)
 	{
@@ -554,7 +545,7 @@ class JsonDb
 	 * 查询指定键名之后的数据
 	 * @access public
 	 * @param string $field_name 字段名
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function afterKey($field_name)
 	{
@@ -570,14 +561,11 @@ class JsonDb
 	 * @access public
 	 * @param string $field_name 字段名
 	 * @param $order asc 按升序排列丨desc 按降序排列
-	 * @return $this
+	 * @return JsonDb
 	 */
 	public function order($field_name, $order = 'desc')
 	{
-		$order_list = [
-			'asc' => SORT_ASC,
-			'desc' => SORT_DESC
-		];
+		$order_list = ['asc' => SORT_ASC, 'desc' => SORT_DESC];
 		$order_this = $order_list[$order] ? $order_list[$order] : $order;
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		foreach ($file as $key => $value) {
@@ -619,18 +607,14 @@ class JsonDb
 	 */
 	public function jsonFile()
 	{
-		if (!file_exists($this->tableFile)) {
-			return [];
-		}
+		if (!file_exists($this->tableFile)) return [];
 		$data = file_get_contents($this->tableFile);
 		$data = empty($this->options['decode']) ? $data : call_user_func($this->options['decode'], $data);
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
 			$this->DbError('文件' . $this->tableFile . '数据错误！');
 		}
-		if (empty($data)) {
-			return [];
-		}
+		if (empty($data)) return [];
 		return $data;
 	}
 
@@ -645,12 +629,8 @@ class JsonDb
 	{
 		$data = array_values($array);
 		$data = $this->jsonEncode($data);
-		if ($table_name) {
-			$this->tableSwitch($table_name);
-		}
-		if (!file_exists($this->tableRoot)) {
-			mkdir($this->tableRoot, 0755, true);
-		}
+		if ($table_name) $this->tableSwitch($table_name);
+		if (!file_exists($this->tableRoot)) mkdir($this->tableRoot, 0755, true);
 		$data = empty($this->options['encode']) ? $data : call_user_func($this->options['encode'], $data);
 		return file_put_contents($this->tableFile, $data);
 	}
