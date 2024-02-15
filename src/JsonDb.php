@@ -124,16 +124,14 @@ class JsonDb
 	{
 		// 获取表中原来的数据
 		$file = $this->jsonFile();
+		// 获取原来数据数组中最后一行
 		$end_data = end($file);
 		$data['id'] = is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1;
 		$data['create_time'] = isset($data['create_time']) ? $data['create_time'] : date('Y-m-d H:i:s');
 		$data['update_time'] = isset($data['update_time']) ? $data['update_time'] : $data['create_time'];
 		array_push($file, $data);
-		if ($getLastInsID) {
-			$this->arrayFile($file);
-			return $data['id'];
-		}
-		return $this->arrayFile($file);
+		$storage = $this->arrayFile($file);
+		return $getLastInsID ? $data['id'] : $storage;
 	}
 
 	/**
@@ -155,14 +153,41 @@ class JsonDb
 	 */
 	public function insertAll(array $array)
 	{
+		// 获取表中原来的数据
+		$file = $this->jsonFile();
+		// 获取原来数据数组中最后一行
+		$end_data = end($file);
+		$start = is_numeric(@$end_data['id']) ? $end_data['id'] + 1 : 1;
 		$insertAll = 0;
-		foreach ($array as $value) {
+		foreach ($array as $key => $data) {
 			$insertAll++;
 			if ($insertAll === $this->limit) break;
-			$this->insert($value);
+			$data['id'] = $start;
+			$data['create_time'] = isset($data['create_time']) ? $data['create_time'] : date('Y-m-d H:i:s');
+			$data['update_time'] = isset($data['update_time']) ? $data['update_time'] : $data['create_time'];
+			array_push($file, $data);
+			$start++;
 		}
+		$this->arrayFile($file);
 		return $insertAll;
 	}
+
+	/**
+	 * 批量添加数据
+	 * @access public
+	 * @param array $array 数据集
+	 * @return integer 返回共添加数据的条数
+	 */
+	// public function insertAll(array $array)
+	// {
+	// 	$insertAll = 0;
+	// 	foreach ($array as $value) {
+	// 		$insertAll++;
+	// 		if ($insertAll === $this->limit) break;
+	// 		$this->insert($value);
+	// 	}
+	// 	return $insertAll;
+	// }
 
 	/**
 	 * 保存数据
