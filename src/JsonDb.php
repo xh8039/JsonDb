@@ -311,7 +311,7 @@ class JsonDb
 	 * 查询单条数据
 	 * @param $id 通过ID查询指定数据
 	 * @access public
-	 * @return array
+	 * @return array|null
 	 */
 	public function find($id = null)
 	{
@@ -413,15 +413,15 @@ class JsonDb
 	 * 指定当前操作的数据表
 	 * @access public
 	 * @param string $table_name 表名
-	 * @return JsonDb
+	 * @return JsonDb|null
 	 */
 	public function table($table_name)
 	{
 		if (empty($table_name)) {
 			$this->DbError('表名不能为空');
-			return;
+			return null;
 		}
-		$this->tableFile = $this->tableRoot . DIRECTORY_SEPARATOR . $table_name . $this->options['file_suffix'];
+		$this->tableFile = $this->tableRoot . $table_name . $this->options['file_suffix'];
 		// $this->tableName = $table_name;
 		return $this;
 	}
@@ -434,7 +434,7 @@ class JsonDb
 	 */
 	private function tableSwitch($table_name)
 	{
-		$this->tableFile = $this->tableRoot . DIRECTORY_SEPARATOR . $table_name . $this->options['file_suffix'];
+		$this->tableFile = $this->tableRoot . $table_name . $this->options['file_suffix'];
 		return $this;
 	}
 
@@ -608,7 +608,7 @@ class JsonDb
 	 * 数组转JSON数据
 	 * @access private
 	 * @param array $array 要转换的数组
-	 * @return json|string
+	 * @return string
 	 */
 	private function jsonEncode($array)
 	{
