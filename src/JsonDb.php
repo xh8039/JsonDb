@@ -114,7 +114,7 @@ class JsonDb
 	}
 
 	/**
-	 * 插入记录
+	 * 新增记录
 	 * @access public
 	 * @param array   $data         数据
 	 * @param boolean $getLastInsID 返回自增主键
@@ -135,7 +135,7 @@ class JsonDb
 	}
 
 	/**
-	 * 插入记录并获取自增ID
+	 * 新增记录并获取自增ID
 	 * @access public
 	 * @param array $data 数据
 	 * @return integer|string
@@ -634,7 +634,7 @@ class JsonDb
 	{
 		if (!file_exists($this->tableFile)) return [];
 		$data = file_get_contents($this->tableFile);
-		$data = empty($this->options['decode']) ? $data : call_user_func($this->options['decode'], $data);
+		$data = empty($this->options['decode']) ? $data : $this->options['decode']($data);
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
 			$this->DbError('文件' . $this->tableFile . '数据错误！');
@@ -656,7 +656,7 @@ class JsonDb
 		$data = $this->jsonEncode($data);
 		if ($table_name) $this->tableSwitch($table_name);
 		if (!file_exists($this->tableRoot)) mkdir($this->tableRoot, 0755, true);
-		$data = empty($this->options['encode']) ? $data : call_user_func($this->options['encode'], $data);
+		$data = empty($this->options['encode']) ? $data : $this->options['encode']($data);
 		return file_put_contents($this->tableFile, $data);
 	}
 

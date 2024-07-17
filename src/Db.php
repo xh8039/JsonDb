@@ -40,7 +40,7 @@ class Db
 		// if (is_null(self::$DB)) {
 			// self::$DB = new JsonDb(self::$options);
 		// }
-		// return self::$DB->table($table_name);
+		// return self::DB::name($table_name);
 	}
 
 	/**
