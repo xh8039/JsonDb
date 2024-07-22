@@ -38,6 +38,9 @@ class JsonDb
 	/** 对数据限制的处理条数 */
 	public $limit = null;
 
+	/** 要合并原来数据的字段 */
+	private array $merge = [];
+
 	/**
 	 * 初始化配置
 	 * @param array $options JsonDb配置
@@ -58,6 +61,21 @@ class JsonDb
 
 		// 单表模式
 		$this->options['table_name'] ? $this->table($this->options['table_name']) : false;
+	}
+
+	/**
+	 * 要进行数组递归替换的字段
+	 * @param array|string $field
+	 * @return JsonDb
+	 */
+	public function merge(array|string $field)
+	{
+		if (is_string($field)) {
+			$this->merge[] = $field;
+		} else {
+			$this->merge = array_merge($this->merge, $field);
+		}
+		return $this;
 	}
 
 	/**
@@ -218,7 +236,11 @@ class JsonDb
 		foreach ($result as $key => $value) {
 			foreach ($array as $array_key => $array_value) {
 				$update++;
-				$file[$key][$array_key] = $array_value;
+				if (!empty($this->merge) && is_array($this->merge) && in_array($array_key, $this->merge)) {
+					$file[$key][$array_key] = array_replace_recursive($file[$key][$array_key], $array_value);
+				} else {
+					$file[$key][$array_key] = $array_value;
+				}
 				if (!isset($array['update_time'])) {
 					$file[$key]['update_time'] = date('Y-m-d H:i:s');
 				}
