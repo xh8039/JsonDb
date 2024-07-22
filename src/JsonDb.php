@@ -23,17 +23,6 @@ class JsonDb
 		'debug' => true, // 调试模式
 	];
 
-	// public $table_options = [
-	// 	'admin' => [
-	// 		'auto_increme_fields' => ['id'], // 设置表中自动递增整数字段
-	// 		'primary_key_fields' => ['id'] // 设置表中的主键字段
-	// 	],
-	// 	'options' => [
-	// 		'auto_increme_fields' => [], // 设置表中自动递增整数字段
-	// 		'primary_key_fields' => ['name'] // 设置表中的主键字段
-	// 	],
-	// ];
-
 	/** 错误信息 */
 	public $error;
 
@@ -372,8 +361,7 @@ class JsonDb
 	public function count()
 	{
 		$result = $this->filterResult;
-		// $this->filterResult = null;
-		$data = $result ? $result : $this->jsonFile();
+		$data = is_null($result) ? $this->jsonFile() : $result;
 		if (empty($data)) return 0;
 		return count($data);
 	}
