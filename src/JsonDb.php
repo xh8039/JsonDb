@@ -64,6 +64,19 @@ class JsonDb
 	}
 
 	/**
+	 * 将数据打乱
+	 * @return JsonDb
+	 */
+	public function shuffle()
+	{
+		if (is_null($this->filterResult)) {
+			$this->filterResult = $this->jsonFile();
+		}
+		shuffle($this->filterResult);
+		return $this;
+	}
+
+	/**
 	 * 要进行数组递归替换的字段
 	 * @param array|string $field
 	 * @return JsonDb
