@@ -1,5 +1,0 @@
-/vendor/
-*.log
-.env
-/.idea
-/.vscode
