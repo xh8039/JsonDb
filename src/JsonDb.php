@@ -32,6 +32,9 @@ class JsonDb
 	/** JSON数据表的文件路径 */
 	public $tableFile;
 
+	/** JSON数据表的名称 */
+	public $tableName;
+
 	/** 筛选后的结果 */
 	public $filterResult = null;
 
@@ -410,6 +413,9 @@ class JsonDb
 	 */
 	public function limit(int $offset, int $length = null)
 	{
+		if ($offset == 0 && $length == null) {
+			return $this;
+		}
 		$this->limit = $offset;
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (empty($file)) {
@@ -436,7 +442,7 @@ class JsonDb
 	 * 指定当前操作的数据表
 	 * @access public
 	 * @param string $table_name 表名
-	 * @return JsonDb|null
+	 * @return JsonDb
 	 */
 	public function table($table_name)
 	{
@@ -445,7 +451,7 @@ class JsonDb
 			return null;
 		}
 		$this->tableFile = $this->tableRoot . $table_name . $this->options['file_suffix'];
-		// $this->tableName = $table_name;
+		$this->tableName = $table_name;
 		return $this;
 	}
 
@@ -565,10 +571,24 @@ class JsonDb
 		}
 		$field_value = str_replace('%', '.*', $field_value);
 		$field_value = '/' . $field_value . '/s';
-		foreach ($file as $key => $value) {
-			if (preg_match($field_value, @$value[$field_name]) <= 0) {
-				unset($file[$key]);
+		if (is_string($field_name) && strstr($field_name, '|')) {
+			$field_name = explode('|', $field_name);
+		}
+		foreach ($file as $file_key => $file_value) {
+			$unset = true;
+			if (is_array($field_name)) {
+				foreach ($field_name as $explode_value) {
+					if (preg_match($field_value, @$file_value[$explode_value]) > 0) {
+						$unset = false;
+						break;
+					}
+				}
+			} else {
+				if (preg_match($field_value, @$file_value[$field_name]) > 0) {
+					$unset = false;
+				}
 			}
+			if ($unset === true) unset($file[$file_key]);
 		}
 		$this->filterResult = $file;
 		return $this;
@@ -655,12 +675,15 @@ class JsonDb
 	 */
 	public function jsonFile()
 	{
-		if (!file_exists($this->tableFile)) return [];
+		if (!file_exists($this->tableFile)) {
+			$this->DbError('数据表 ' . $this->tableName . ' 不存在！');
+			return [];
+		}
 		$data = file_get_contents($this->tableFile);
 		$data = empty($this->options['decode']) ? $data : $this->options['decode']($data);
 		$data = json_decode($data, true);
 		if (!is_array($data)) {
-			$this->DbError('文件' . $this->tableFile . '数据错误！');
+			$this->DbError('数据表 ' . $this->tableName . ' 的JSON数据错误！');
 		}
 		if (empty($data)) return [];
 		return $data;
@@ -691,9 +714,26 @@ class JsonDb
 	private function DbError($msg)
 	{
 		$this->error = $msg;
-		if ($this->options['debug']) {
+		if ($this->isAjax()) {
+			echo $this->jsonEncode([
+				'code' => 500,
+				'msg' => $msg,
+				'message' => $msg
+			]);
+		} else {
 			echo ('JsonDb Error：' . $msg);
-			exit;
+		}
+		exit;
+	}
+
+	private function isAjax()
+	{
+		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+			// 是AJAX请求
+			return true;
+		} else {
+			// 不是AJAX请求
+			return false;
 		}
 	}
 }
