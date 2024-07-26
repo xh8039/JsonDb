@@ -57,4 +57,4 @@ Db::setConfig([
 ]);
 ```
 
-[查询构造器](https://yepydvmpxo.k.topthink.com/@json-db/)
+## [查看查询构造器](https://yepydvmpxo.k.topthink.com/@json-db/)
