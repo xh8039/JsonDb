@@ -84,7 +84,7 @@ class JsonDb
 	 * @param array|string $field
 	 * @return JsonDb
 	 */
-	public function merge(array|string $field)
+	public function merge($field)
 	{
 		if (is_string($field)) {
 			$this->merge[] = $field;
