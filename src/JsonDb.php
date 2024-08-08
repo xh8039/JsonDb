@@ -468,6 +468,45 @@ class JsonDb
 	}
 
 	/**
+	 * 根据字段条件进行时间筛选
+	 * @access public
+	 * @param string $field_name 时间名
+	 * @param string $operator 操作符
+	 * @param string|array $field_value 时间值
+	 * @return JsonDb
+	 */
+	public function whereTime(string $field_name, string $operator, $field_value)
+	{
+		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
+		if (!is_array($file)) {
+			$this->filterResult = [];
+			return $this;
+		}
+
+		$filtered = [];
+
+		$filtered = array_filter($file, function ($item) use ($field_name, $operator, $field_value) {
+			// 检测字段值是否存在
+			if (!isset($item[$field_name])) return false;
+			// 如果要筛选的值是数组
+			if (is_array($field_value)) {
+				// 将数组内所有时间值解析为 Unix 时间戳
+				$field_value_time = [];
+				foreach ($field_value as $value) {
+					$field_value_time[] = is_numeric($value) ? $value : strtotime($value);
+				}
+			} else {
+				// 将时间值解析为 Unix 时间戳
+				$field_value_time = is_numeric($field_value) ? $field_value : strtotime($field_value);
+			}
+			return $this->compare($field_name, $operator, $field_value_time, $item[$field_name]);
+		});
+
+		$this->filterResult = $filtered;
+		return $this;
+	}
+
+	/**
 	 * 根据字段条件过滤数组中的元素
 	 * @access public
 	 * @param string|array $a 字段名|筛选条件数组
@@ -480,7 +519,10 @@ class JsonDb
 		$param = func_num_args();
 		if ($param == 1 && is_array($a)) $this->whereArray($a);
 		if ($param == 2) $this->filter($a, '=', $b);
-		if ($param == 3) $this->filter($a, $b, $c);
+		if ($param == 3) {
+			if ($b == 'like') return $this->whereLike($a, $c);
+			$this->filter($a, $b, $c);
+		}
 		return $this;
 	}
 
@@ -503,7 +545,7 @@ class JsonDb
 
 		$filtered = array_filter($file, function ($item) use ($field_name, $operator, $field_value) {
 			if (!isset($item[$field_name])) return false;
-			return $this->compare($item[$field_name], $operator, $field_value);
+			return $this->compare($item[$field_name], $operator, $field_value, $item);
 		});
 
 		$this->filterResult = $filtered;
@@ -514,21 +556,31 @@ class JsonDb
 	 * 比较值
 	 * @return bool
 	 */
-	private function compare($value, $operator, $filterValue)
+	private function compare($filter_name, $operator, $filter_value, $item = null)
 	{
 		switch ($operator) {
 			case '=':
-				return $value == $filterValue;
+				return $filter_name == $filter_value;
 			case '>':
-				return $value > $filterValue;
+				return $filter_name > $filter_value;
 			case '>=':
-				return $value >= $filterValue;
+				return $filter_name >= $filter_value;
 			case '<':
-				return $value < $filterValue;
+				return $filter_name < $filter_value;
 			case '<=':
-				return $value <= $filterValue;
+				return $filter_name <= $filter_value;
 			case '==':
-				return $value === $filterValue;
+				return $filter_name === $filter_value;
+			case 'between':
+				if (($item[$filter_name] >= reset($filter_value)) && ($item[$filter_name] <= end($filter_value))) {
+					return true;
+				}
+				return false;
+			case 'not between':
+				if (($item[$filter_name] >= reset($filter_value)) && ($item[$filter_name] <= end($filter_value))) {
+					return false;
+				}
+				return true;
 			default:
 				return false;
 		}
