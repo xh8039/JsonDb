@@ -470,17 +470,23 @@ class JsonDb
 	/**
 	 * 根据字段条件进行时间筛选
 	 * @access public
-	 * @param string $field_name 时间名
+	 * @param string $field_name 字段名
 	 * @param string $operator 操作符
-	 * @param string|array $field_value 时间值
+	 * @param string|array|null $field_value 时间值
 	 * @return JsonDb
 	 */
-	public function whereTime(string $field_name, string $operator, $field_value)
+	public function whereTime(string $field_name, string $operator, $field_value = null)
 	{
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
 		if (!is_array($file)) {
 			$this->filterResult = [];
 			return $this;
+		}
+
+		if (is_null($field_value)) {
+			// 从数组中将变量导入到当前的符号表
+			extract($this->timeExpression($operator));
+			if ($field_value === false) return $this;
 		}
 
 		$filtered = [];
@@ -504,6 +510,82 @@ class JsonDb
 
 		$this->filterResult = $filtered;
 		return $this;
+	}
+
+	/**
+	 * 时间表达式
+	 * @param string $expression
+	 */
+	private function timeExpression($expression)
+	{
+		switch ($expression) {
+			case 'today':
+				$operator = '=';
+				$field_value = date('Y-m-d');
+			case 'yesterday':
+				$operator = '=';
+				$field_value = date('Y-m-d', strtotime('-1 day'));
+			case 'week':
+				// 创建当前日期的 DateTime 对象
+				$today = new \DateTime();
+				// 获取本周一的日期
+				$monday = clone $today;
+				$monday->modify('monday this week')->format('Y-m-d H:i:s');
+				// 获取本周日的日期
+				$sunday = clone $today;
+				$sunday->modify('sunday this week')->format('Y-m-d H:i:s');
+				$operator = 'between';
+				$field_value = [$monday, $sunday];
+			case 'last week':
+				// 获取当前时间
+				$now = new \DateTime();
+				// 获取上周一
+				$lastMonday = clone $now;
+				$lastMonday->modify('last monday -1 week')->format('Y-m-d H:i:s');
+				// 获取上周日
+				$lastSunday = clone $now;
+				$lastSunday->modify('last sunday -1 week')->format('Y-m-d H:i:s');
+				$operator = 'between';
+				$field_value = [$lastMonday, $lastSunday];
+			case 'month':
+				// 获取当前日期
+				$today = new \DateTime();
+				// 获取本月的第一天
+				$firstDay = $today->modify('first day of this month')->format('Y-m-d');
+				// 获取本月的最后一天
+				$lastDay = $today->modify('last day of this month')->format('Y-m-d');
+				$operator = 'between';
+				$field_value = [$firstDay, $lastDay];
+			case 'last month':
+				// 创建一个当前日期的 DateTime 对象
+				$now = new \DateTime();
+				// 修改为上个月的第一天
+				$firstDayOfLastMonth = clone $now;
+				$firstDayOfLastMonth->modify('first day of last month')->format('Y-m-d');
+				// 修改为上个月的最后一天
+				$lastDayOfLastMonth = clone $now;
+				$lastDayOfLastMonth->modify('last day of last month')->format('Y-m-d');
+				$operator = 'between';
+				$field_value = [$firstDayOfLastMonth, $lastDayOfLastMonth];
+			case 'year':
+				$startOfYear = date('Y-01-01');
+				$endOfYear  = date('Y-12-31');
+				$operator = 'between';
+				$field_value = [$startOfYear, $endOfYear];
+			case 'last year':
+				// 获取上年的开始日期
+				$lastYearStart = new \DateTime('first day of January last year');
+				$lastYearStartFormatted = $lastYearStart->format('Y-m-d');
+				// 获取上年的结束日期
+				$lastYearEnd = new \DateTime('last day of December last year');
+				$lastYearEndFormatted = $lastYearEnd->format('Y-m-d');
+				$operator = 'between';
+				$field_value = [$lastYearStartFormatted, $lastYearEndFormatted];
+			default:
+				$operator = false;
+				$field_value = false;
+		}
+		return ['operator' => $operator, 'field_value' => $field_value];
 	}
 
 	/**
@@ -655,6 +737,7 @@ class JsonDb
 	public function beforeKey($field_name)
 	{
 		$file = is_null($this->filterResult) ? $this->jsonFile() : $this->filterResult;
+		// 返回数组中的所有的键名
 		$keys = array_keys($file);
 		$len = array_search($field_name, $keys);
 		$this->filterResult = array_slice($file, 0, $len);
