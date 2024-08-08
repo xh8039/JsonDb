@@ -471,7 +471,7 @@ class JsonDb
 	 * 根据字段条件进行时间筛选
 	 * @access public
 	 * @param string $field_name 字段名
-	 * @param string $operator 操作符
+	 * @param string $operator 查询表达式|时间表达式
 	 * @param string|array|null $field_value 时间值
 	 * @return JsonDb
 	 */
@@ -510,6 +510,78 @@ class JsonDb
 
 		$this->filterResult = $filtered;
 		return $this;
+	}
+
+	/**
+	 * 查询在某个时间区间
+	 * @param string $field_name 字段值
+	 * @param string $start_time 开始时间
+	 * @param string $end_time 结束时间
+	 */
+	public function whereBetweenTime($field_name, $start_time, $end_time)
+	{
+		return $this->whereTime($field_name, 'between', [$start_time, $end_time]);
+	}
+
+	/**
+	 * 查询不在某个时间区间
+	 * @param string $field_name 字段值
+	 * @param string $start_time 开始时间
+	 * @param string $end_time 结束时间
+	 */
+	public function whereNotBetweenTime(string $field_name, string $start_time, string $end_time)
+	{
+		return $this->whereTime($field_name, 'not between', [$start_time, $end_time]);
+	}
+
+	/**
+	 * 查询当天或昨天的数据
+	 * @param string $field_name 字段值
+	 * @param string $time today|yesterday
+	 */
+	public function whereDay(string $field_name, string $time = 'today')
+	{
+		return $this->whereTime($field_name, $time);
+	}
+
+	/**
+	 * 查询本周或上周的数据
+	 * @param string $field_name 字段值
+	 * @param string $time week|last week
+	 */
+	public function whereWeek(string $field_name, string $time = 'week')
+	{
+		return $this->whereTime($field_name, $time);
+	}
+
+	/**
+	 * 查询本月或上月的数据
+	 * @param string $field_name 字段值
+	 * @param string $time month|last month
+	 */
+	public function whereMonth(string $field_name, string $time = 'month')
+	{
+		return $this->whereTime($field_name, $time);
+	}
+
+	/**
+	 * 查询今年或上年的数据
+	 * @param string $field_name 字段值
+	 * @param string $time year|last year
+	 */
+	public function whereYear(string $field_name, string $time = 'year')
+	{
+		return $this->whereTime($field_name, $time);
+	}
+
+	/**
+	 * 时间字段区间比较
+	 * @param string $start_time
+	 * @param string $end_time
+	 */
+	public function whereBetweenTimeField(string $start_time, string $end_time)
+	{
+		return $this->whereTime($start_time, '<=', time())->whereTime($end_time, '>=', time());
 	}
 
 	/**
@@ -592,7 +664,7 @@ class JsonDb
 	 * 根据字段条件过滤数组中的元素
 	 * @access public
 	 * @param string|array $a 字段名|筛选条件数组
-	 * @param mixed  $b 操作符|字段值
+	 * @param mixed  $b 查询表达式|字段值
 	 * @param mixed  $c 字段值
 	 * @return JsonDb
 	 */
